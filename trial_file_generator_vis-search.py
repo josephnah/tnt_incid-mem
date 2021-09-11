@@ -2,7 +2,7 @@ import pandas as pd
 import create_cb_matrix
 import testable
 
-# Visual Search
+# Visual Search for ROC curve
 
 # Buttons and stimuli
 button1 = "High confidence for Left"
