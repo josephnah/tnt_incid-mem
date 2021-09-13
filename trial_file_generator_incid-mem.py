@@ -1,7 +1,7 @@
 import pandas as pd
 import create_cb_matrix
 import testable
-
+import random
 # Visual Search for ROC curve
 
 # Buttons and stimuli
@@ -89,7 +89,12 @@ for t in range(subjectGroup):
         memory = testable.insert_essential_columns()
         memory["type"] = ["test"]
 
-        memory["stimList"] = f'{objects["stim_orig"][0]};{objects["stim_flip"][0]}'
+        if random.random() > .5:
+            memory["stimList"] = f'{objects["stim_orig"][0]};{objects["stim_flip"][0]}'
+            orig_stim_loc = 1
+        else:
+            memory["stimList"] = f'{objects["stim_flip"][0]};{objects["stim_orig"][0]}'
+            orig_stim_loc = 2
         memory["button1"] = button1
         memory["button2"] = button2
         memory["button3"] = button3
@@ -101,6 +106,7 @@ for t in range(subjectGroup):
         memory["stimFormat"] = ".png"
         memory["stimPos"] = f'{-testable.mem_stim_pos}; {testable.mem_stim_pos}'
         memory["for_order"] = 1
+        memory['orig_stim_loc'] = orig_stim_loc
 
         memory_start = start.copy()
         memory_start["stim1"] = "blank"
@@ -169,7 +175,7 @@ all_trials = all_trials[
      "responseType", "responseOptions", "head",
      "button1", "button2", "button3", "button4", "button5", "button6", 'button7',
      "block_num", "trial_num", "mem_trial_num", "required",
-     "target_loc", "pair_loc", "sem_condition", 'trial_type']]
+     "target_loc", "pair_loc", "sem_condition", 'orig_stim_loc', 'trial_type']]
 
 # Extract result to clipboard
 all_trials.to_clipboard(excel=True, sep="\t")
