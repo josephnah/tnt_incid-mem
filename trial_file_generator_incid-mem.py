@@ -60,7 +60,7 @@ for t in range(subjectGroup):
 
         objects = testable.object_trials(
             target, pair, neutral1, neutral2, condition, trial_num, practice_cb.iloc[[p]])
-
+        objects["type"] = ["learn"]
         trial = pd.concat([start, cue, objects], axis=0, sort=True)
         practice_trials = practice_trials.append(trial)
         practice_trials["subjectGroup"] = subject_counter
