@@ -244,13 +244,13 @@ def object_trials(object1, object2, object3, object4, semCond, trial_num, matrix
     stim3 = object_flip(object3)
     stim4 = object_flip(object4)
 
-    objects['stim_orig'] = stim2
+    objects['stim_orig'] = stim1
 
-    if stim2[-5:] == '_flip':
-        objects['stim_flip'] = stim2.replace('_flip', '')
+    if stim1[-5:] == '_flip':
+        objects['stim_flip'] = stim1.replace('_flip', '')
 
     else:
-        objects['stim_flip'] = stim2 + '_flip'
+        objects['stim_flip'] = stim1 + '_flip'
 
     # targets
     targets = target_shuffle()
