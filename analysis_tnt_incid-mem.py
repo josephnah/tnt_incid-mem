@@ -5,6 +5,7 @@ import testable_analysis
 import pingouin as pg
 import matplotlib.pyplot as plt
 import seaborn as sns
+import numpy as np
 # import metrics to calculate area under the curve (AUC)
 from sklearn import metrics
 
@@ -19,6 +20,13 @@ draw_graph = float(input())
 
 # directory to data
 data_dir = testable_analysis.data_path
+
+# Graph Parameters
+errbar_color = 'black'
+errbar_line_width = 2
+errbar_capsize = 5
+errbar_capthick = 2
+
 
 
 # load all files
@@ -179,7 +187,7 @@ auc_ANOVA = pg.rm_anova(data=roc_auc, dv='auc', within='sem_condition', subject=
 print('')
 print(auc_ANOVA)
 # look at mean AUC for each condition
-print(roc_auc.groupby(['sem_condition']).mean())
+# print(roc_auc.groupby(['sem_condition']).mean())
 
 # Graph ROC Curve
 roc_all_df = pd.concat([roc_old_df[['3_old_prob', '2_old_prob', '1_old_prob']], roc_new_df], axis=1)
@@ -214,58 +222,57 @@ thm_filt = roc_objects_df['sem_condition'] == 'thematic'
 tax_objects_df = roc_objects_df[tax_filt].sort_values('hit_rate', ascending=False)
 thm_objects_df = roc_objects_df[thm_filt].sort_values('hit_rate', ascending=False)
 
-# Graph Thematic Objects
-
-# Set seaborn defaults
-sns.set_context('talk')
-sns.set_theme(style='white')
-
-fig, ax = plt.subplots(figsize=(13, 13))
-
-# Draw graph using seaborn
-sns.barplot(data=thm_objects_df, x='test_image', y='hit_rate')
-sns.despine()
-
-# Customize x axis
-plt.xlabel("Thematic Objects", fontsize=20)
-plt.xticks(rotation=45)
-ax.tick_params(axis='both', which='major', labelsize=15)
-# ax.margins(x=0)
-
-# customize y axis
-plt.ylabel("Hit Rate", fontsize=20)
-ax.set_ylim(0, 1)
-
-# Draw chance level
-ax.plot([0, 3], [0.5, 0.5], transform=ax.transAxes, color='gray', dashes=(2, 1))
-plt.savefig('f_thm_hit-rate.png')
-
-plt.show()
-
-# Draw Taxonomic Objects
-fig, ax = plt.subplots(figsize=(13, 13))
-
-# Draw graph using seaborn
-sns.barplot(data=tax_objects_df, x='test_image', y='hit_rate')
-sns.despine()
-
-# Customize x axis
-plt.xlabel("Taxonomic Objects", fontsize=20)
-plt.xticks(rotation=45)
-ax.tick_params(axis='both', which='major', labelsize=15)
-# ax.margins(x=0)
-
-# customize y axis
-plt.ylabel("Hit Rate", fontsize=20)
-ax.set_ylim(0, 1)
-
-# Draw chance level
-ax.plot([0, 3], [0.5, 0.5], transform=ax.transAxes, color='gray', dashes=(2, 1))
-plt.savefig('f_tax_hit-rate.png')
-
-plt.show()
-
 if draw_graph == 1:
+    # Graph Thematic Objects
+
+    # Set seaborn defaults
+    sns.set_context('poster')
+    sns.set_theme(style='white')
+
+    fig, ax = plt.subplots(figsize=(10, 10))
+
+    # Draw graph using seaborn
+    sns.barplot(data=thm_objects_df, x='test_image', y='hit_rate')
+    sns.despine()
+
+    # Customize x axis
+    plt.xlabel("Thematic Objects", fontsize=20)
+    plt.xticks(rotation=45)
+    ax.tick_params(axis='both', which='major', labelsize=15)
+    # ax.margins(x=0)
+
+    # customize y axis
+    plt.ylabel("Hit Rate", fontsize=20)
+    ax.set_ylim(0, 1)
+
+    # Draw chance level
+    ax.plot([0, 3], [0.5, 0.5], transform=ax.transAxes, color='gray', dashes=(2, 1))
+    plt.savefig('f_thm_hit-rate.png')
+    plt.tight_layout(h_pad=2.0)
+    plt.show()
+
+    # Draw Taxonomic Objects
+    fig, ax = plt.subplots(figsize=(10, 10))
+
+    # Draw graph using seaborn
+    sns.barplot(data=tax_objects_df, x='test_image', y='hit_rate')
+    sns.despine()
+
+    # Customize x axis
+    plt.xlabel("Taxonomic Objects", fontsize=20)
+    plt.xticks(rotation=45)
+    ax.tick_params(axis='both', which='major', labelsize=15)
+    # ax.margins(x=0)
+
+    # customize y axis
+    plt.ylabel("Hit Rate", fontsize=20)
+    ax.set_ylim(0, 1)
+
+    # Draw chance level
+    ax.plot([0, 3], [0.5, 0.5], transform=ax.transAxes, color='gray', dashes=(2, 1))
+    plt.tight_layout(h_pad=2.0)
+    plt.savefig('f_tax_hit-rate.png')
+    plt.show()
 
     sns.set_context('poster')
     sns.set_style('white')
@@ -303,45 +310,57 @@ if draw_graph == 1:
     plt.savefig('f_ROC.png')
     plt.show()
 
-    # Generate graphs for RT
-    # Figure 1?
+    # Figure 1 Parameters
     colors = ["#FF221A", "#6A9551", "#D2AC3A"]
-    # sns.set_palette(sns.color_palette(colors))
-    sns.set_context('poster')
+    conditions_x = ['Neutral', 'Taxonomic', 'Thematic']
+    conditions = 3
+    sns.set_palette(sns.color_palette(colors))
+    sns.set_context('talk')
     sns.set_style('white')
+    fig_1, axes_1 = plt.subplots(figsize=(12, 6),  nrows=1, ncols=2)
 
-    fig, ax = plt.subplots(figsize=(12, 12))
+    # Figure 1a, data
+    f_RT_means = corr_sem_condition_group['RT'].mean().unstack().mean()
+    f_sem_RT_means = corr_sem_condition_group['RT'].mean().unstack().sem()
 
+    # Draw graph and error bar
+    axes_1[0].bar(np.arange(conditions), f_RT_means, color=colors, edgecolor='black', linewidth=2)
+    axes_1[0].errorbar(np.arange(conditions), f_RT_means, yerr=f_sem_RT_means, fmt=' ', ecolor=errbar_color, elinewidth=errbar_line_width, capsize=errbar_capsize, capthick=errbar_capthick)
 
-    sns.barplot(data=anova_corr_search_df_group, x='sem_condition', y= 'RT',
-                palette=colors, order = ['neutral', 'taxonomic','thematic'],
-                ci=99, errwidth=3)
+    # title stuff
+    axes_1[0].set_title('RT for Visual Search', size=20)
+
+    # x axis stuff
+    axes_1[0].set_xlabel('Semantic Conditions')
+    plt.setp(axes_1, xticks=[i for i in range(conditions)], xticklabels=conditions_x)
+
+    # y-axis stuff
+    axes_1[0].set_ylabel('RT (ms)')
+
+    # Figure 1b
+    # Data
+    f_ACC_means = sem_condition_group['correct'].mean().unstack().mean() * 100
+    f_sem_ACC_means = sem_condition_group['correct'].mean().unstack().sem() * 100
+
+    # Draw graph and error bar
+    axes_1[1].bar(np.arange(conditions), f_ACC_means, color=colors, edgecolor='black', linewidth=2)
+    axes_1[1].errorbar(np.arange(conditions), f_ACC_means, yerr=f_sem_ACC_means, fmt=' ', ecolor=errbar_color, elinewidth=errbar_line_width, capsize=errbar_capsize, capthick=errbar_capthick)
+
+    # title stuff
+    axes_1[1].set_title('Accuracy for Visual Search', size=20)
+
+    # x axis stuff
+    axes_1[1].set_xlabel('Semantic Conditions')
+
+    # y-axis stuff
+    axes_1[1].set_ylabel('Accuracy (%)')
+
+    # Add # of participants to graph
+    axes_1[1].text(2, -20, 'n = ' + str(participants))
+
+    # Finalize and print
     sns.despine()
-    # ax.set_title('RT for Visual Search')
-    ax.set_xticklabels(['Neutral', 'Taxonomic','Thematic'])
-    # ax.spines['top'].set_visible(False)
-    # ax.spines['right'].set_visible(False)
-    plt.xlabel("Semantic Conditions")
-    plt.ylabel("RT (ms)")
-
-    plt.savefig('f_RT.png')
+    plt.tight_layout(h_pad=2.0)
+    plt.savefig('f_RT-ACC.png')
     plt.show()
-
-    fig, ax = plt.subplots(figsize=(12, 12))
-
-
-
-    sns.barplot(data=anova_search_df_group, x='sem_condition', y='correct',
-                palette=colors, order=['neutral', 'taxonomic', 'thematic'],
-                ci=99, errwidth=3)
-    sns.despine()
-
-    # ax.set_title('RT for Visual Search')
-    ax.set_xticklabels(['Neutral', 'Taxonomic', 'Thematic'])
-    ax.spines['top'].set_visible(False)
-    ax.spines['right'].set_visible(False)
-    plt.xlabel("Semantic Conditions")
-    plt.ylabel("Accuracy")
-
-    plt.savefig('f_ACC.png')
-    plt.show()
+    # anova_corr_search_df_group.to_clipboard()
