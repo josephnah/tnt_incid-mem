@@ -26,7 +26,8 @@ errbar_color = 'black'
 errbar_line_width = 2
 errbar_capsize = 5
 errbar_capthick = 2
-
+font_color = 'black'
+trans_param = False
 
 
 # load all files
@@ -151,6 +152,13 @@ roc_df = roc_df.pivot_table(values='counts', columns='old_new', index=['par_num'
 roc_df = roc_df[["par_num", 'sem_condition', '3_old', '2_old', '1_old', '1_new', '2_new', '3_new']]
 roc_df.fillna(0, inplace=True)
 
+# Overall Hit and False Alarm Rate
+roc_hfa_df = roc_df[["par_num", 'sem_condition', '3_old', '2_old', '1_old', '1_new', '2_new', '3_new']]
+roc_hfa_df['hit_rate'] = roc_hfa_df[['3_old', '2_old', '1_old']].sum(axis=1) / 30
+roc_hfa_df['faa_rate'] = roc_hfa_df[['3_new', '2_new', '1_new']].sum(axis=1) / 30
+
+
+# Divide up into Hit and False Alarm DataFrames
 roc_old_df = roc_df[["par_num", 'sem_condition', '3_old', '2_old', '1_old']]
 roc_new_df = roc_df[["par_num", 'sem_condition', '1_new', '2_new', '3_new']]
 # roc_df_prob = roc_df.div(30).cumsum(axis=1).reset_index
@@ -229,7 +237,7 @@ if draw_graph == 1:
     sns.set_context('poster')
     sns.set_theme(style='white')
 
-    fig, ax = plt.subplots(figsize=(10, 10))
+    fig, ax = plt.subplots(figsize=(14, 10))
 
     # Draw graph using seaborn
     sns.barplot(data=thm_objects_df, x='test_image', y='hit_rate')
@@ -238,7 +246,8 @@ if draw_graph == 1:
     # Customize x axis
     plt.xlabel("Thematic Objects", fontsize=20)
     plt.xticks(rotation=45)
-    ax.tick_params(axis='both', which='major', labelsize=15)
+    ax.tick_params(axis='y', which='major', labelsize=15)
+    ax.tick_params(axis='x', which='major', labelsize=12)
     # ax.margins(x=0)
 
     # customize y axis
@@ -246,13 +255,13 @@ if draw_graph == 1:
     ax.set_ylim(0, 1)
 
     # Draw chance level
-    ax.plot([0, 3], [0.5, 0.5], transform=ax.transAxes, color='gray', dashes=(2, 1))
-    plt.savefig('f_thm_hit-rate.png')
+    ax.plot([0, 3], [0.5, 0.5], transform=ax.transAxes, color='red', dashes=(2, 1))
     plt.tight_layout(h_pad=2.0)
+    plt.savefig('f_thm_hit-rate.png', transparent=trans_param)
     plt.show()
 
     # Draw Taxonomic Objects
-    fig, ax = plt.subplots(figsize=(10, 10))
+    fig, ax = plt.subplots(figsize=(14, 10))
 
     # Draw graph using seaborn
     sns.barplot(data=tax_objects_df, x='test_image', y='hit_rate')
@@ -261,7 +270,8 @@ if draw_graph == 1:
     # Customize x axis
     plt.xlabel("Taxonomic Objects", fontsize=20)
     plt.xticks(rotation=45)
-    ax.tick_params(axis='both', which='major', labelsize=15)
+    ax.tick_params(axis='y', which='major', labelsize=15)
+    ax.tick_params(axis='x', which='major', labelsize=12)
     # ax.margins(x=0)
 
     # customize y axis
@@ -269,9 +279,9 @@ if draw_graph == 1:
     ax.set_ylim(0, 1)
 
     # Draw chance level
-    ax.plot([0, 3], [0.5, 0.5], transform=ax.transAxes, color='gray', dashes=(2, 1))
+    ax.plot([0, 3], [0.5, 0.5], transform=ax.transAxes, color='red', dashes=(2, 1))
     plt.tight_layout(h_pad=2.0)
-    plt.savefig('f_tax_hit-rate.png')
+    plt.savefig('f_tax_hit-rate.png', transparent=trans_param)
     plt.show()
 
     sns.set_context('poster')
@@ -302,12 +312,12 @@ if draw_graph == 1:
     ax.set_ylim(0, 1)
 
     # ax.set(title='ROCs')
-    ax.set_xlabel("False Alarm Rate")
-    ax.set_ylabel("Hit Rate")
-    ax.plot([0, 1], [0, 1], transform=ax.transAxes, color='gray', dashes=(2,1))
+    ax.set_xlabel("False Alarm Rate", color=font_color)
+    ax.set_ylabel("Hit Rate", color=font_color)
+    ax.plot([0, 1], [0, 1], transform=ax.transAxes, color='gray', dashes=(2, 1))
     ax.legend()
     plt.legend(title='Semantic Relationship', fontsize='15', title_fontsize='14', labels=['Neutral', 'Taxonomic', 'Thematic'])
-    plt.savefig('f_ROC.png')
+    plt.savefig('f_ROC.png', transparent=trans_param)
     plt.show()
 
     # Figure 1 Parameters
@@ -328,14 +338,14 @@ if draw_graph == 1:
     axes_1[0].errorbar(np.arange(conditions), f_RT_means, yerr=f_sem_RT_means, fmt=' ', ecolor=errbar_color, elinewidth=errbar_line_width, capsize=errbar_capsize, capthick=errbar_capthick)
 
     # title stuff
-    axes_1[0].set_title('RT for Visual Search', size=20)
+    axes_1[0].set_title('RT for Visual Search', size=20, color=font_color)
 
     # x axis stuff
-    axes_1[0].set_xlabel('Semantic Conditions')
+    axes_1[0].set_xlabel('Semantic Conditions', color=font_color)
     plt.setp(axes_1, xticks=[i for i in range(conditions)], xticklabels=conditions_x)
 
     # y-axis stuff
-    axes_1[0].set_ylabel('RT (ms)')
+    axes_1[0].set_ylabel('RT (ms)', color=font_color)
 
     # Figure 1b
     # Data
@@ -347,20 +357,66 @@ if draw_graph == 1:
     axes_1[1].errorbar(np.arange(conditions), f_ACC_means, yerr=f_sem_ACC_means, fmt=' ', ecolor=errbar_color, elinewidth=errbar_line_width, capsize=errbar_capsize, capthick=errbar_capthick)
 
     # title stuff
-    axes_1[1].set_title('Accuracy for Visual Search', size=20)
+    axes_1[1].set_title('Accuracy for Visual Search', size=20, color=font_color)
 
     # x axis stuff
-    axes_1[1].set_xlabel('Semantic Conditions')
+    axes_1[1].set_xlabel('Semantic Conditions', color=font_color)
 
     # y-axis stuff
-    axes_1[1].set_ylabel('Accuracy (%)')
+    axes_1[1].set_ylabel('Accuracy (%)', color=font_color)
 
     # Add # of participants to graph
-    axes_1[1].text(2, -20, 'n = ' + str(participants))
+    axes_1[1].text(2, -20, 'n = ' + str(participants), color=font_color)
 
     # Finalize and print
     sns.despine()
     plt.tight_layout(h_pad=2.0)
-    plt.savefig('f_RT-ACC.png')
+    plt.savefig('f_RT-ACC.png', transparent=trans_param)
     plt.show()
+
+    # Figure SOM (hit and false alarm rates)
+    fig_SOM, axes_SOM = plt.subplots(figsize=(12, 6),  nrows=1, ncols=2)
+
+    # Data
+    f_hit_means = roc_hfa_df.groupby(['par_num', 'sem_condition'])[['hit_rate']].mean().unstack().mean()
+    f_hit_sem = roc_hfa_df.groupby(['par_num', 'sem_condition'])[['hit_rate']].mean().unstack().sem()
+
+    f_faa_means = roc_hfa_df.groupby(['par_num', 'sem_condition'])[['faa_rate']].mean().unstack().mean()
+    f_faa_sem = roc_hfa_df.groupby(['par_num', 'sem_condition'])[['faa_rate']].mean().unstack().sem()
+
+    # Draw graph and error bar
+    axes_SOM[0].bar(np.arange(conditions), f_hit_means, color=colors, edgecolor='black', linewidth=2)
+    axes_SOM[0].errorbar(np.arange(conditions), f_hit_means, yerr=f_hit_sem, fmt=' ', ecolor=errbar_color,
+                       elinewidth=errbar_line_width, capsize=errbar_capsize, capthick=errbar_capthick)
+
+    # title stuff
+    axes_SOM[0].set_title('Overall Hit Rate', size=20, color=font_color)
+
+    # x axis stuff
+    axes_SOM[0].set_xlabel('Semantic Conditions', color=font_color)
+    plt.setp(axes_SOM, xticks=[i for i in range(conditions)], xticklabels=conditions_x)
+
+    # y-axis stuff
+    axes_SOM[0].set_ylabel('Hit Rate', color=font_color)
+
+    # Draw graph and error bar
+    axes_SOM[1].bar(np.arange(conditions), f_faa_means, color=colors, edgecolor='black', linewidth=2)
+    axes_SOM[1].errorbar(np.arange(conditions), f_faa_means, yerr=f_faa_sem, fmt=' ', ecolor=errbar_color,
+                         elinewidth=errbar_line_width, capsize=errbar_capsize, capthick=errbar_capthick)
+
+    # title stuff
+    axes_SOM[1].set_title('Overall False Alarm Rate', size=20, color=font_color)
+
+    # x axis stuff
+    axes_SOM[1].set_xlabel('Semantic Conditions', color=font_color)
+    plt.setp(axes_SOM, xticks=[i for i in range(conditions)], xticklabels=conditions_x)
+
+    # y-axis stuff
+    axes_SOM[1].set_ylabel('False Alarm Rate', color=font_color)
+    # Finalize and print
+    sns.despine()
+    plt.tight_layout(h_pad=2.0)
+    plt.savefig('f_HIT-FAA.png', transparent=trans_param)
+    plt.show()
+    # roc_hfa_df.groupby(['par_num', 'sem_condition'])[['hit_rate']].mean().to_clipboard()
     # anova_corr_search_df_group.to_clipboard()
