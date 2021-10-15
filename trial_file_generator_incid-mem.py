@@ -23,7 +23,7 @@ gender_df = testable.gender_questions()
 hispanic_df = testable.hispanic_question()
 
 # Subject related
-subjectGroup = 5
+subjectGroup = 1
 subject_counter = 0
 
 # initialize dataframes
@@ -36,6 +36,7 @@ for t in range(subjectGroup):
     # Create counter balance matrix for each participant
     trial_cb, practice_cb = create_cb_matrix.cb_matrix()
 
+    practice_cb, search_trials, memory_trials_all, memory_test_trials = create_cb_matrix.cb_matrix_test(30)
     # initialize main dataframe
     par_trials = pd.DataFrame([])
     final_trial = pd.DataFrame([])
@@ -45,7 +46,7 @@ for t in range(subjectGroup):
     subject_counter += 1
     break_counter = 0
     trial_num = 0
-
+    test_num = 0
     for p in range(len(practice_cb)):
 
         start = testable.start_trial()
@@ -63,7 +64,7 @@ for t in range(subjectGroup):
         objects["type"] = ["learn"]
         trial = pd.concat([start, cue, objects], axis=0, sort=True)
         practice_trials = practice_trials.append(trial)
-        practice_trials["subjectGroup"] = subject_counter
+        # practice_trials["subjectGroup"] = subject_counter
 
     for i in range(len(trial_cb)):
         # print("trial # " + str(i))
@@ -72,48 +73,73 @@ for t in range(subjectGroup):
         # START TRIAL (0/4) - ITI and alert for fixation prior to beginning of trial
         start = testable.start_trial()
 
-        # CUE WORD
-        cue = testable.cue_trial(trial_cb["Ref_Word"][i])
+        # create all possible trials for subjectGroup
+        if i in memory_trials_all['trial_number'].values:
 
-        # OBJECTS
-        target = trial_cb["target"][i]
-        pair = trial_cb["pair"][i]
-        neutral1 = trial_cb["neutral1"][i]
-        neutral2 = trial_cb["neutral2"][i]
-        condition = trial_cb["condition"][i]
+            # filters for potential memory trials
+            memory_trial_filter = (memory_trials_all['trial_number'] == i, ['target', 'pair', 'neutral1', 'neutral2', 'condition', 'trial_number', 'Ref_Word'])
+            memory_rest_filter = (memory_trials_all['trial_number'] == i, ['subjectGroup', 'Mean_Rating_Tx', 'Mean_Rating_Thm', 'Difference_Score', 'mem_trials'])
 
-        objects = testable.object_trials(
-            target, pair, neutral1, neutral2, condition, trial_num, trial_cb.iloc[[i]])
+            # total number of subjectGroup
+            subjectGroup_total = len(memory_trials_all.loc[memory_trial_filter])
 
-        # surprise memory test at the end
-        memory = testable.insert_essential_columns()
-        memory["type"] = ["test"]
+            # set up empty data frame
+            objects_all = pd.DataFrame([])
 
-        if random.random() > .5:
-            memory["stimList"] = f'{objects["stim_orig"][0]};{objects["stim_flip"][0]}'
-            orig_stim_loc = 1
+            # loop through # of subject Group to create testable trial_file
+            for subjGroup in range(subjectGroup_total):
+
+                # cue
+                cue = testable.cue_trial(memory_trials_all.loc[memory_trial_filter].values[subjGroup, 6])
+                # print(cue['stim1'])
+                cue['subjectGroup'] = memory_trials_all.loc[memory_rest_filter].values[subjGroup, 0]
+
+                # target
+                target = memory_trials_all.loc[memory_trial_filter].values[subjGroup, 0]
+                pair = memory_trials_all.loc[memory_trial_filter].values[subjGroup, 1]
+                neutral1 = memory_trials_all.loc[memory_trial_filter].values[subjGroup, 2]
+                neutral2 = memory_trials_all.loc[memory_trial_filter].values[subjGroup, 3]
+                condition = memory_trials_all.loc[memory_trial_filter].values[subjGroup, 4]
+                trial_num = memory_trials_all.loc[memory_trial_filter].values[subjGroup, 5]
+
+                # rest of the information needed for trial (and analysis)
+                rest_trials = memory_trials_all.loc[memory_rest_filter].values[subjGroup]
+
+                # combine all target info into object df
+                objects = testable.object_trials(target, pair, neutral1, neutral2, condition, trial_num, rest_trials, num=1)
+
+                # combine cue and object
+                cue_objects = pd.concat([cue, objects])
+                # print(cue_objects['stim1'])
+                # print('')
+                # Combine for all subjectGroup
+                objects_all = pd.concat([objects_all, cue_objects])
+
+                # print(subjGroup, test_num, "length of objects_all: ", len(objects_all), "length of objects: ", len(objects))
+            objects_all.to_clipboard()
+
         else:
-            memory["stimList"] = f'{objects["stim_flip"][0]};{objects["stim_orig"][0]}'
-            orig_stim_loc = 2
-        memory["button1"] = button1
-        memory["button2"] = button2
-        memory["button3"] = button3
-        memory["button4"] = button4
-        memory["button5"] = button5
-        memory["button6"] = button6
-        memory["mem_trial_num"] = trial_cb["mem_trial_order"][i]
-        memory["sem_condition"] = trial_cb["condition"][i]
-        memory["stimFormat"] = ".png"
-        memory["stimPos"] = f'{-testable.mem_stim_pos}; {testable.mem_stim_pos}'
-        memory["for_order"] = 1
-        memory['orig_stim_loc'] = orig_stim_loc
 
-        memory_start = start.copy()
-        memory_start["stim1"] = "blank"
-        memory_start["mem_trial_num"] = trial_cb["mem_trial_order"][i]
-        memory_start["for_order"] = 0
+            # for all non-critical visual search trials
+            search_trial_filter = (search_trials['trial_number'] == i, ['target', 'pair', 'neutral1', 'neutral2', 'condition', 'trial_number', "Ref_Word"])
+            rest_trials_filter = (search_trials ['trial_number'] == i, ['Mean_Rating_Tx', 'Mean_Rating_Thm', 'Difference_Score', 'mem_trials'])
 
-        memoryz = pd.concat([memory_start, memory], axis=0, sort=True)
+            # rest of the information needed for trial (and analysis)
+            rest_trials = search_trials.loc[rest_trials_filter]
+
+            cue = testable.cue_trial(search_trials.loc[search_trial_filter].values[0, 6])
+
+            # OBJECTS
+            target = search_trials.loc[search_trial_filter].values[0, 0]
+            pair = search_trials.loc[search_trial_filter].values[0, 1]
+            neutral1 = search_trials.loc[search_trial_filter].values[0, 2]
+            neutral2 = search_trials.loc[search_trial_filter].values[0, 3]
+            condition = search_trials.loc[search_trial_filter].values[0, 4]
+            trial_num = search_trials.loc[search_trial_filter].values[0, 5]
+
+            # print('search!', search_trials.loc[search_trial_filter].values[0])
+            objects_all = testable.object_trials(target, pair, neutral1, neutral2, condition, trial_num, rest_trials)
+
 
         # Insert break
         if i % 30 == 0 and i > 0:
@@ -136,14 +162,16 @@ for t in range(subjectGroup):
             rest["presTime"] = ["", "2000"]
             rest["stimPos"] = ["", "50, 50"]
 
-            trial = pd.concat(
-                [start, cue, objects, rest], axis=0, sort=True)
+            if i in memory_trials_all['trial_number'].values:
+                trial = pd.concat([start, objects_all, rest], axis=0, sort=True)
+            else:
+                trial = pd.concat([start, cue, objects_all, rest], axis=0, sort=True)
         else:
-            trial = pd.concat([start, cue, objects], axis=0, sort=True)
+            if i in memory_trials_all['trial_number'].values:
+                trial = pd.concat([start, objects_all], axis=0, sort=True)
+            else:
+                trial = pd.concat([start, cue, objects_all], axis=0, sort=True)
 
-        mem_final_trial = mem_final_trial.append(memoryz, sort=True)
-        mem_final_trial.sort_values(
-            ["mem_trial_num", "for_order"], inplace=True)
 
         final_trial = final_trial.append(trial, sort=True)
 
@@ -154,30 +182,79 @@ for t in range(subjectGroup):
     print("adding parNo: " + str(subject_counter))
     par_trials = par_trials.append(final_trial)
 
-    practice_trials['subjectGroup'] = subject_counter
-    end_practice_break['subjectGroup'] = subject_counter
-    par_trials['subjectGroup'] = subject_counter
-    mem_instructions['subjectGroup'] = subject_counter
-    mem_final_trial['subjectGroup'] = subject_counter
+    # practice_trials['subjectGroup'] = subject_counter
+    # end_practice_break['subjectGroup'] = subject_counter
+    # par_trials['subjectGroup'] = subject_counter
+    # mem_instructions['subjectGroup'] = subject_counter
 
     all_trials = pd.concat(
-        [all_trials, practice_trials, end_practice_break, par_trials, mem_instructions, mem_final_trial], axis=0, sort=True)
+        [all_trials, practice_trials, end_practice_break, par_trials], axis=0, sort=True)
 
+    # time between end of visual search and beginning of memory search
+    mem_start = testable.start_trial()
+
+    # surprise memory test at the end
+    memory_test_filter = (all_trials['trial_num'] == 89,
+                           ['subjectGroup', 'stim_orig', 'stim_flip', 'sem_condition'])
+
+    memory_test_trials = all_trials.loc[memory_test_filter]
+
+    memory_test_all = pd.DataFrame([])
+    memory = testable.insert_essential_columns()
+    memory["type"] = ["test"]
+
+    for subjs in range(len(memory_test_trials)):
+        print('sub num: ', subjs)
+
+        mem_subjGroup = memory_test_trials.values[subjs, 0]
+        mem_stim_orig = memory_test_trials.values[subjs, 1]
+        mem_stim_flip = memory_test_trials.values[subjs, 2]
+        mem_sem_condition = memory_test_trials.values[subjs, 3]
+        print('subjGroup: ', mem_subjGroup)
+        # memory_test_trials.to_clipboard()
+
+        if random.random() > .5:
+            memory["stimList"] = f'{mem_stim_orig};{mem_stim_flip}'
+            orig_stim_loc = 1
+        else:
+            memory["stimList"] = f'{mem_stim_flip};{mem_stim_orig}'
+            orig_stim_loc = 2
+
+        print(memory["stimList"])
+        print('')
+        memory["button1"] = button1
+        memory["button2"] = button2
+        memory["button3"] = button3
+        memory["button4"] = button4
+        memory["button5"] = button5
+        memory["button6"] = button6
+        memory["sem_condition"] = mem_sem_condition
+        memory['subjectGroup'] = mem_subjGroup
+        memory["stimFormat"] = ".png"
+        memory["mem_trials"] = 2
+        memory["stimPos"] = f'{-testable.mem_stim_pos}; {testable.mem_stim_pos}'
+        memory['orig_stim_loc'] = orig_stim_loc
+        memory['trialText'] = 'One of the below objects just appeared in the visual search task. Using your mouse, select a button below the objects that best represents your memory and confidence level.'
+
+        memory_test_all = pd.concat([memory_test_all, memory])
+
+    memoryz = pd.concat([mem_start, memory_test_all], axis=0, sort=True)
 
 # Refine DataFrame for final trial file
 all_trials = pd.concat([gender_df, race_df, hispanic_df,
-                        instructions_df, all_trials], axis=0, sort=True)
+                        instructions_df, all_trials, memoryz], axis=0, sort=True)
+# .to_clipboard()
+
 
 all_trials = all_trials.set_index("subjectGroup")
 all_trials = all_trials[
     ["type", "content", "trialText", "stimList", "stim1", "stimPos", "stimFormat", "ITI",
      "presTime", "keyboard", "key", "feedback", "feedbackTime", "feedbackOptions",
-     "responseType", "responseOptions", "head",
+     "responseType", "responseOptions",
      "button1", "button2", "button3", "button4", "button5", "button6", 'button7',
-     "block_num", "trial_num", "mem_trial_num", "required",
+     "trial_num", 'mem_trials',
      "target_loc", "pair_loc", "sem_condition", 'orig_stim_loc', 'trial_type']]
 
 # Extract result to clipboard
 all_trials.to_clipboard(excel=True, sep="\t")
-
 print("done")
