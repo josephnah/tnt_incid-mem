@@ -30,6 +30,17 @@ subject_counter = 0
 practice_trials = pd.DataFrame([])
 all_trials = pd.DataFrame([])
 
+# initialize random location for memory test object locations
+
+obj_loc_matrix1 = [1, 1, 1, 1, 1, 2, 2, 2, 2, 2]
+obj_loc_matrix2 = [1, 1, 1, 1, 1, 2, 2, 2, 2, 2]
+obj_loc_matrix3 = [1, 1, 1, 1, 1, 2, 2, 2, 2, 2]
+
+random.shuffle(obj_loc_matrix1)
+random.shuffle(obj_loc_matrix2)
+random.shuffle(obj_loc_matrix3)
+
+obj_locations = obj_loc_matrix1 + obj_loc_matrix2 + obj_loc_matrix3
 
 for t in range(subjectGroup):
 
@@ -59,7 +70,7 @@ for t in range(subjectGroup):
         neutral2 = practice_cb["neutral2"][p]
         condition = practice_cb["condition"][p]
 
-        objects = testable.object_trials(
+        objects = testable.object_trials_prac(
             target, pair, neutral1, neutral2, condition, trial_num, practice_cb.iloc[[p]])
         objects["type"] = ["learn"]
         trial = pd.concat([start, cue, objects], axis=0, sort=True)
@@ -101,12 +112,15 @@ for t in range(subjectGroup):
                 neutral2 = memory_trials_all.loc[memory_trial_filter].values[subjGroup, 3]
                 condition = memory_trials_all.loc[memory_trial_filter].values[subjGroup, 4]
                 trial_num = memory_trials_all.loc[memory_trial_filter].values[subjGroup, 5]
+                extra_target = memory_trials_all.loc[memory_trial_filter].values[subjGroup, 7]
+
+                print(extra_target)
 
                 # rest of the information needed for trial (and analysis)
                 rest_trials = memory_trials_all.loc[memory_rest_filter].values[subjGroup]
 
                 # combine all target info into object df
-                objects = testable.object_trials(target, pair, neutral1, neutral2, condition, trial_num, rest_trials, num=1)
+                objects = testable.object_trials(target, pair, neutral1, neutral2, condition, trial_num, extra_target, rest_trials, num=1)
 
                 # combine cue and object
                 cue_objects = pd.concat([cue, objects])
@@ -136,9 +150,10 @@ for t in range(subjectGroup):
             neutral2 = search_trials.loc[search_trial_filter].values[0, 3]
             condition = search_trials.loc[search_trial_filter].values[0, 4]
             trial_num = search_trials.loc[search_trial_filter].values[0, 5]
+            extra_target = '0'
 
             # print('search!', search_trials.loc[search_trial_filter].values[0])
-            objects_all = testable.object_trials(target, pair, neutral1, neutral2, condition, trial_num, rest_trials)
+            objects_all = testable.object_trials(target, pair, neutral1, neutral2, condition, trial_num, extra_target, rest_trials)
 
 
         # Insert break
@@ -213,7 +228,7 @@ for t in range(subjectGroup):
         print('subjGroup: ', mem_subjGroup)
         # memory_test_trials.to_clipboard()
 
-        if random.random() > .5:
+        if obj_locations[subjs] == 1:
             memory["stimList"] = f'{mem_stim_orig};{mem_stim_flip}'
             orig_stim_loc = 1
         else:
