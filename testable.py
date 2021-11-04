@@ -25,9 +25,8 @@ def insert_essential_columns():
     essential_df = pd.DataFrame(columns=[
         'type', 'content', 'trialText', 'stimList', 'stim1', 'stimPos',
         'stimFormat', 'ITI', 'presTime', 'keyboard', 'key', 'feedback', 'feedbackTime', 'feedbackOptions',
-        'responseType', 'responseOptions', 'head', 'button1', 'block_num', 'trial_num', 'condition', 'sem-rel',
-        'cued-object', 'cued-object_loc', 'target_object_loc', 'obj-orientation', 'obj-pair_num',
-        'stim1_pos', 'stim2_pos', 'stim3_pos', 'stim4_pos', 'target_kind', 'trial_type', 'required'
+        'responseType', 'responseOptions', 'head', 'button1','trial_num'
+        'target_kind', 'trial_type', 'required'
     ]
     )
     return essential_df
@@ -231,7 +230,71 @@ def hispanic_question():
     return hispanic
 
 
-def object_trials(object1, object2, object3, object4, semCond, trial_num, matrix):
+def object_trials(object1, object2, object3, object4, semCond, trial_num, extra_target, matrix, num=0):
+
+    objects = insert_essential_columns()
+    objects["type"] = ["test"]
+    objects["stimFormat"] = ".png"
+
+    object_loc = location_shuffle()
+
+    stim1 = object_flip(object1)
+    stim2 = object_flip(object2)
+    stim3 = object_flip(object3)
+    stim4 = object_flip(object4)
+
+    objects['stim_orig'] = stim1
+    objects['pair_obj'] = stim2
+
+    if stim1[-5:] == '_flip':
+        objects['stim_flip'] = stim1.replace('_flip', '')
+
+    else:
+        objects['stim_flip'] = stim1 + '_flip'
+
+    # targets
+    targets = target_shuffle()
+    stim5 = targets[0]
+    stim6 = targets[1]
+    stim7 = targets[2]
+    stim8 = targets[3]
+    stim9 = fixation
+
+    objects["sem_condition"] = semCond
+
+    objects["stimList"] = f'{stim1};{stim2};{stim3};{stim4};{stim5};{stim6};{stim7};{stim8};{stim9}'
+    stimPos = f'{all_coor[object_loc[0]]}; {all_coor[object_loc[1]]}; {all_coor[object_loc[2]]}; {all_coor[object_loc[3]]}'
+    objects["stimPos"] = f'{stimPos}; {stimPos}; {fovea}'
+
+    objects["presTime"] = object_time
+    objects["target_loc"] = object_loc[0] + 1
+    objects["pair_loc"] = object_loc[1] + 1
+
+    objects["keyboard"] = "1 2 3 4"
+    objects['key'] = stim5[-1]
+
+    objects["feedback"] = "incorrect: incorrect"
+    objects["feedbackTime"] = 1000
+    objects["feedbackOptions"] = "center"
+
+    objects["trial_num"] = trial_num
+    objects['extra_pair'] = extra_target
+
+    if num == 0:
+        objects = pd.merge(objects.assign(A=1), matrix.assign(A=1), on="A").drop(columns="A")
+    elif num == 1:
+        objects_temp = pd.DataFrame(columns=['subjectGroup', 'Mean_Rating_Tx', 'Mean_Rating_Thm', 'Difference_Score', 'mem_trials'])
+        objects_temp['subjectGroup'] = [matrix[0]]
+        objects_temp['Mean_Rating_Tx'] = [matrix[1]]
+        objects_temp['Mean_Rating_Thm'] = [matrix[2]]
+        objects_temp['Difference_Score'] = [matrix[3]]
+        objects_temp['mem_trials'] = [matrix[4]]
+
+        objects = pd.merge(objects.assign(A=1), objects_temp.assign(A=1), on="A").drop(columns="A")
+
+    return objects
+
+def object_trials_prac(object1, object2, object3, object4, semCond, trial_num, matrix, num=0):
 
     objects = insert_essential_columns()
     objects["type"] = ["test"]
@@ -278,10 +341,73 @@ def object_trials(object1, object2, object3, object4, semCond, trial_num, matrix
     objects["feedbackOptions"] = "center"
 
     objects["trial_num"] = trial_num
-    objects = pd.merge(objects.assign(
-        A=1), matrix.assign(A=1), on="A").drop("A", 1)
+
+    if num == 0:
+        objects = pd.merge(objects.assign(A=1), matrix.assign(A=1), on="A").drop(columns="A")
+    elif num == 1:
+        objects_temp = pd.DataFrame(columns=['subjectGroup', 'Mean_Rating_Tx', 'Mean_Rating_Thm', 'Difference_Score', 'mem_trials'])
+        objects_temp['subjectGroup'] = [matrix[0]]
+        objects_temp['Mean_Rating_Tx'] = [matrix[1]]
+        objects_temp['Mean_Rating_Thm'] = [matrix[2]]
+        objects_temp['Difference_Score'] = [matrix[3]]
+        objects_temp['mem_trials'] = [matrix[4]]
+
+        objects = pd.merge(objects.assign(A=1), objects_temp.assign(A=1), on="A").drop(columns="A")
 
     return objects
 
+def object_trials_critical(object1_df, object2_df, object3_df, object4_df, semCond_df, trial_num, extra_target, matrix):
+
+    objects = insert_essential_columns()
+    objects["type"] = ["test"]
+    objects["stimFormat"] = ".png"
+
+    object_loc = location_shuffle()
+
+    stim1 = object_flip(object1)
+    stim2 = object_flip(object2)
+    stim3 = object_flip(object3)
+    stim4 = object_flip(object4)
+
+    objects['stim_orig'] = stim1
+
+    if stim1[-5:] == '_flip':
+        objects['stim_flip'] = stim1.replace('_flip', '')
+
+    else:
+        objects['stim_flip'] = stim1 + '_flip'
+
+    # targets
+    targets = target_shuffle()
+    stim5 = targets[0]
+    stim6 = targets[1]
+    stim7 = targets[2]
+    stim8 = targets[3]
+    stim9 = fixation
+
+    objects["sem_condition"] = semCond
+
+    objects["stimList"] = f'{stim1};{stim2};{stim3};{stim4};{stim5};{stim6};{stim7};{stim8};{stim9}'
+    stimPos = f'{all_coor[object_loc[0]]}; {all_coor[object_loc[1]]}; {all_coor[object_loc[2]]}; {all_coor[object_loc[3]]}'
+    objects["stimPos"] = f'{stimPos}; {stimPos}; {fovea}'
+
+    objects["presTime"] = object_time
+    objects["target_loc"] = object_loc[0] + 1
+    objects["pair_loc"] = object_loc[1] + 1
+
+    objects["keyboard"] = "1 2 3 4"
+    objects['key'] = stim5[-1]
+
+    objects["feedback"] = "incorrect: incorrect"
+    objects["feedbackTime"] = 1000
+    objects["feedbackOptions"] = "center"
+
+    objects["trial_num"] = trial_num
+
+    objects['extra_target'] = extra_target
+    objects = pd.merge(objects.assign(
+        A=1), matrix.assign(A=1), on="A").drop(columns="A")
+
+    return objects
 
 # if __name__ == '__main__':
