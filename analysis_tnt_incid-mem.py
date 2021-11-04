@@ -16,7 +16,7 @@ pd.options.mode.chained_assignment = None
 
 # bring up prompt to draw graphs or not
 print('Draw Graphs? (1 for yes): ')
-draw_graph = float(input())
+draw_graph = 1
 
 # directory to data
 data_dir = testable_analysis.data_path
@@ -36,13 +36,14 @@ participants = len(csv_paths)
 df = []
 
 for file in range(participants):
-    data = pd.read_csv(csv_paths[file], skiprows=2)
+    data = pd.read_csv(csv_paths[file], skiprows=3)
     data['par_num'] = csv_paths[file][-10:-4]
     df.append(data)
 
 raw_df = pd.concat(df, sort=True)
 # Set par_num as index
 raw_df.set_index('par_num', inplace=True)
+raw_df.to_clipboard()
 
 # Divide up the demographics
 demographics = raw_df['trial_type'] == 'demographics'
@@ -58,6 +59,14 @@ accuracy_filter = search_df['correct'] == 1
 # DF for all correct trials (for RT)
 corr_search_df = search_df[accuracy_filter]
 
+# grab only final accurate trials
+accurate_final_trial_filter = (search_df['correct'] == 1) & (search_df['trial_num'] == 89)
+accurate_final_trial_df = search_df.loc[accurate_final_trial_filter]
+final_trial_df = search_df[accurate_final_trial_filter]
+
+# index for correct final trials
+final_trial_index = final_trial_df.index
+
 # Visual Search DF for RT
 corr_sem_condition_group = corr_search_df.groupby(['par_num', 'sem_condition'])
 corr_search_df_group = corr_sem_condition_group['RT'].mean().unstack()
@@ -71,6 +80,7 @@ search_df_group.columns = ['acc_neu', 'acc_tax', 'acc_thm']
 # File output as csv for JASP
 csv_output = pd.concat([corr_search_df_group, search_df_group], axis=1)
 csv_output.to_clipboard()
+
 # DF for Statistical Analysis (RT)
 anova_corr_search_df_group = corr_sem_condition_group['RT'].mean()
 anova_corr_search_df_group = anova_corr_search_df_group.reset_index()
@@ -106,8 +116,12 @@ print(pairwise_results_ACC)
 # Now calculate ROC curve starting with memory trials
 
 # and memory trials
-memory_trials = raw_df['mem_trial_num'] >= 0
+# Prep for memory trials
+memory_trials = raw_df['mem_trials'] == 2
 memory_df_prepro = raw_df[memory_trials].dropna(axis=1, how='all')
+
+# Only correct on final trials
+memory_df_prepro = memory_df_prepro.loc[final_trial_index]
 
 # Keep original response and create new familiarity column
 memory_df_prepro['old_new'] = memory_df_prepro['response']
@@ -122,7 +136,7 @@ memory_objrght = memory_df_prepro['orig_stim_loc'] == 2
 obj_left_df = memory_df_prepro[memory_objleft]
 obj_rght_df = memory_df_prepro[memory_objrght]
 
-
+# memory_df_prepro.to_clipboard()
 # Set Dictionary for old/new + confidences and replace with Testable response
 conf_left_dict = {1: '3_old', 2: '2_old', 3: '1_old', 4: '1_new', 5: '2_new', 6: '3_new'}
 conf_rght_dict = {1: '3_new', 2: '2_new', 3: '1_new', 4: '1_old', 5: '2_old', 6: '3_old'}
@@ -132,9 +146,13 @@ obj_rght_df.replace({'old_new': conf_rght_dict}, inplace=True)
 
 # concat back into memory_df
 memory_df = pd.concat([obj_left_df, obj_rght_df])
+# memory_df.to_clipboard()
 
 # List of columns to drop
-drop_list= ['rowNo', 'type', 'stimPos','stimFormat', 'stimPos_actual', 'ITI_f', 'ITI_fDuration', 'timestamp', 'button1', 'button2', 'button3', 'button4', 'button5', 'button6','flipped_stim', 'orig_stim', 'stimList']
+drop_list = [
+    'rowNo', 'type', 'stimPos','stimFormat', 'stimPos_actual', 'ITI_f', 'ITI_fDuration', 'timestamp', 'button1',
+    'button2', 'button3', 'button4', 'button5', 'button6','flipped_stim', 'orig_stim', 'stimList'
+]
 
 # Separate stimList column
 memory_df['orig_stim'] = memory_df['stimList'].str.split(pat=';', expand=True)[0]
@@ -146,21 +164,48 @@ memory_df['test_image'] = memory_df['orig_stim'].str.replace('_flip', '')
 # Drop now useless columns
 memory_df.drop(columns=drop_list, inplace=True)
 
+print(memory_df)
+# Replace test_image with proper name dictionary
+name_dict = {'AGUINEAP2': 'guinea_pig', 'AHEADSET': 'headset', 'Acougar':'cougar',
+             'Agardeningrak': 'garden_rake', 'Agardeningshe': 'garden_shears',
+            '26421370.thl': 'handcuffs', 'AJOYSTIC1': 'joystick', 'AGARBCAN': 'garbage_can',
+            '23070064.thl': 'bone', 'coffee': 'coffee_mach', 'ABAT': 'bat'}
+
+memory_df.replace({'test_image': name_dict}, inplace=True)
+
+
 # count # of responses
-roc_df = memory_df.groupby(['par_num', 'sem_condition', 'old_new']).size().reset_index(name='counts')
-roc_df = roc_df.pivot_table(values='counts', columns='old_new', index=['par_num', 'sem_condition']).reset_index()
-roc_df = roc_df[["par_num", 'sem_condition', '3_old', '2_old', '1_old', '1_new', '2_new', '3_new']]
+roc_df = memory_df.groupby(['sem_condition', 'test_image', 'old_new']).size().reset_index(name='counts')
+roc_df = roc_df.pivot_table(values='counts', columns='old_new', index=['sem_condition','test_image']).reset_index()
+roc_df = roc_df[['sem_condition', 'test_image', '3_old', '2_old', '1_old', '1_new' , '2_new', '3_new']]
+
 roc_df.fillna(0, inplace=True)
 
-# Overall Hit and False Alarm Rate
-roc_hfa_df = roc_df[["par_num", 'sem_condition', '3_old', '2_old', '1_old', '1_new', '2_new', '3_new']]
-roc_hfa_df['hit_rate'] = roc_hfa_df[['3_old', '2_old', '1_old']].sum(axis=1) / 30
-roc_hfa_df['faa_rate'] = roc_hfa_df[['3_new', '2_new', '1_new']].sum(axis=1) / 30
+# Overall Hit and False Alarm Rate by semantic condition
+roc_hfa_df = roc_df[['sem_condition', 'test_image', '3_old', '2_old', '1_old', '1_new', '2_new', '3_new']]
 
+roc_hfa_df['all_counts'] = roc_hfa_df[['3_old', '2_old', '1_old', '3_new', '2_new', '1_new']].sum(axis=1)
 
+roc_hfa_df['all_hits'] = roc_hfa_df[['3_old', '2_old', '1_old']].sum(axis=1)
+roc_hfa_df['all_faa'] = roc_hfa_df[['3_new', '2_new', '1_new']].sum(axis=1)
+
+roc_hfa_df['hit_rate'] = roc_hfa_df[['3_old', '2_old', '1_old']].sum(axis=1) / roc_hfa_df['all_counts'] * 100
+roc_hfa_df['faa_rate'] = roc_hfa_df[['3_new', '2_new', '1_new']].sum(axis=1) / roc_hfa_df['all_counts'] * 100
+
+roc_hfa_df.groupby(['sem_condition'])[['3_old', '2_old', '1_old', '3_new', '2_new', '1_new']].sum()
+
+print(roc_hfa_df.groupby(['sem_condition'])[['3_old', '2_old', '1_old', '3_new', '2_new', '1_new']].sum())
+# hits and false alarm grouped by semantic conditions
+roc_hfa_df_group = roc_hfa_df.groupby(['sem_condition'])['all_hits'].sum() / roc_hfa_df.groupby(['sem_condition'])['all_counts'].sum() * 100
+print(roc_hfa_df_group)
+
+# hits and false alarm grouped by semantic conditions
+roc_hfa_df_group2 = roc_hfa_df.groupby(['sem_condition', 'test_image'])['all_hits'].sum() / roc_hfa_df.groupby(['sem_condition', 'test_image'])['all_counts'].sum() * 100
+roc_hfa_df_group2.unstack().mean()
+roc_df.to_clipboard()
 # Divide up into Hit and False Alarm DataFrames
-roc_old_df = roc_df[["par_num", 'sem_condition', '3_old', '2_old', '1_old']]
-roc_new_df = roc_df[["par_num", 'sem_condition', '1_new', '2_new', '3_new']]
+roc_old_df = roc_df[['sem_condition', '3_old', '2_old', '1_old']]
+roc_new_df = roc_df[['sem_condition', '1_new', '2_new', '3_new']]
 # roc_df_prob = roc_df.div(30).cumsum(axis=1).reset_index
 
 # calculate all # of trials of HITS and FALSE ALARMS and add as column
@@ -171,34 +216,37 @@ roc_new_df['total_count'] = roc_new_df[['3_new', '2_new', '1_new']].sum(axis=1)
 roc_old_df[['3_old_prob', '2_old_prob', '1_old_prob']] = roc_old_df[['3_old', '2_old', '1_old']].div(roc_old_df['total_count'].values, axis=0).cumsum(axis=1)
 roc_new_df[['3_new_prob', '2_new_prob', '1_new_prob']] = roc_new_df[['3_new', '2_new', '1_new']].div(roc_new_df['total_count'].values, axis=0).cumsum(axis=1)
 
+print(roc_old_df)
 # set up DF for ROC data
 roc_auc = pd.DataFrame(columns=['par_num', 'sem_condition', 'auc'])
 
-for p in roc_old_df.par_num.unique():
-    sub_old = roc_old_df[roc_old_df['par_num'] == p]
-    sub_new = roc_new_df[roc_new_df['par_num'] == p]
-
-    neu_params_dict = {'par_num': p, 'sem_condition': 'neutral', 'auc': metrics.auc(sub_new.iloc[0, 6:10], sub_old.iloc[0, 6:10])}
-    neu_auc_df = pd.DataFrame(neu_params_dict, index=[0])
-
-    tax_params_dict = {'par_num': p, 'sem_condition': 'taxonomic', 'auc': metrics.auc(sub_new.iloc[1, 6:10], sub_old.iloc[1, 6:10])}
-    tax_auc_df = pd.DataFrame(tax_params_dict, index=[0])
-
-    thm_params_dict = {'par_num': p, 'sem_condition': 'thematic', 'auc': metrics.auc(sub_new.iloc[2, 6:10], sub_old.iloc[2, 6:10])}
-    thm_auc_df = pd.DataFrame(thm_params_dict, index=[0])
-
-    all_auc_df = neu_auc_df.append(tax_auc_df).append(thm_auc_df)
-
-    roc_auc = roc_auc.append(all_auc_df)
-
-auc_ANOVA = pg.rm_anova(data=roc_auc, dv='auc', within='sem_condition', subject='par_num')
-print('')
-print(auc_ANOVA)
+# for p in roc_old_df.par_num.unique():
+#     sub_old = roc_old_df[roc_old_df['par_num'] == p]
+#     sub_new = roc_new_df[roc_new_df['par_num'] == p]
+#     sub_new.to_clipboard()
+#
+#     neu_params_dict = {'par_num': p, 'sem_condition': 'neutral', 'auc': metrics.auc(sub_new.iloc[0, 6:10], sub_old.iloc[0, 6:10])}
+#     neu_auc_df = pd.DataFrame(neu_params_dict, index=[0])
+#
+#     tax_params_dict = {'par_num': p, 'sem_condition': 'taxonomic', 'auc': metrics.auc(sub_new.iloc[1, 6:10], sub_old.iloc[1, 6:10])}
+#     tax_auc_df = pd.DataFrame(tax_params_dict, index=[0])
+#
+#     thm_params_dict = {'par_num': p, 'sem_condition': 'thematic', 'auc': metrics.auc(sub_new.iloc[2, 6:10], sub_old.iloc[2, 6:10])}
+#     thm_auc_df = pd.DataFrame(thm_params_dict, index=[0])
+#
+#     all_auc_df = neu_auc_df.append(tax_auc_df).append(thm_auc_df)
+#
+#     roc_auc = roc_auc.append(all_auc_df)
+#
+# auc_ANOVA = pg.rm_anova(data=roc_auc, dv='auc', within='sem_condition', subject='par_num')
+# print('')
+# print(auc_ANOVA)
 # look at mean AUC for each condition
 # print(roc_auc.groupby(['sem_condition']).mean())
 
 # Graph ROC Curve
 roc_all_df = pd.concat([roc_old_df[['3_old_prob', '2_old_prob', '1_old_prob']], roc_new_df], axis=1)
+roc_all_df.to_clipboard()
 x = roc_all_df.groupby('sem_condition')['3_new_prob', '2_new_prob', '1_new_prob'].mean().reset_index()
 y = roc_all_df.groupby('sem_condition')['3_old_prob', '2_old_prob', '1_old_prob'].mean().reset_index()
 
@@ -213,7 +261,7 @@ y_melt.rename(columns={'value': 'hit_rate'}, inplace=True)
 
 all_data = y_melt.merge(x_melt, on=['sem_condition', 'old_new'])
 all_data.sort_values(['sem_condition', 'old_new'], ascending=[True, True], inplace=True)
-
+# all_data.to_clipboard()
 # Calculate Hit/False Alarm by Objects
 roc_objects_df = memory_df.groupby(['sem_condition', 'old_new', 'test_image']).size().reset_index(name='counts')
 roc_objects_df = roc_objects_df.pivot_table(values='counts', columns='old_new', index=['sem_condition', 'test_image']).reset_index()
