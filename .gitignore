@@ -1,3 +1,10 @@
 .DS_Store
 testable_analysis.py
 .Rproj.user
+f_HIT-FAA.png
+f_ROC.png
+f_RT-ACC.png
+f_tax_hit-rate.png
+f_thm_hit-rate.png
+.RData
+.Rhistory
