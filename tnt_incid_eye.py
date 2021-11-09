@@ -1,5 +1,6 @@
-__author__="joecool890"
-#!/usr/bin/env python2
+__author__ = "joecool890"
+
+# !/usr/bin/env python2
 # semantic-obj-scn
 # Version 1.1.5
 # fixed email portion of code + got rid of paidPar var
@@ -9,21 +10,19 @@ import numpy as np
 import random
 import sys
 import testable
-# sys.path.append('/Users/joecool890/Code/Python/uc-davis/tnt_incid_mem/pylinkwrapper')
+
+# basepath = os.getcwd()
+# sys.path.append(os.path.join(basepath, 'pylinkwrapper'))
 # import pylinkwrapper
-
-
 
 # --- Experiment Specifications ---
 # RAs, edit + double check before running
 parNo = 1
 parAge = 33
-parGen = 1 # 1 for Male, 2 for Female, 3 for
-parHand = 1 # 1 for Right, 2 for Left
-eye_track_var = 0 # 0 for debugging, 1 for data collection
+eye_track_var = 0  # 0 for debugging, 1 for data collection
 
 # -- Only change when necessary
-practice_go = True # 0 if practice included
+practice_go = True  # 0 if practice included
 
 # Set date
 date = dt.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")  # get date as YMD_H_M_S
@@ -35,6 +34,7 @@ stim_path = '/stim/'
 file_path = '/data/'
 target_path = '/stim/targets/'
 eye_track_data_path = root_path + '/eye_track_data'
+
 #  --- Experiment Variables ---
 exp_name = "exp_eyetrack"
 exp_ver = 1
@@ -42,6 +42,8 @@ exp_iter = 1
 reps = 1
 block = 3
 block_size = 30
+fix_check_size = 4
+fix_check_time = 1
 
 # --- Data setup ---
 dataMatrix = {}
@@ -56,15 +58,16 @@ elif parNo >= 100:
     rawName = str(parNo) + "_" + date + "_" + exp_name
 
 # name of monitor
+# monitor_name = 'eye_track_monitor'
 monitor_name = 'testMonitor'
 # full screen or not
-screen_var = 0
+screen_var = 1
 
 # target variables
 circ_fill_color = '#808080'
 circ_line_color = '#808080'
-circ_rad = .4
-text_size = .5
+circ_rad = .5
+text_size = .7
 
 # --- Set Duration (s) ---
 cue_time = .5
@@ -76,16 +79,16 @@ else:
     ITI = 1
 
 # --- Set Visual Angle ---
-fix_size = 1
+fix_size = 2
 resolution = 4
-obj_size = 5
+obj_size = 10
 
-xpos = 5
-ypos = 5
+xpos = 10
+ypos = 10
 
 # -- Set Virtual Window ---
 win = visual.Window(
-    [1280, 1024],
+    [2560, 1440],
     monitor=monitor_name,
     screen=0,
     units="deg",
@@ -96,8 +99,10 @@ win = visual.Window(
 # --- set up stimuli ---
 
 # fixations
-fix = visual.ImageStim(win, image=root_path + stim_path + "fixations/fixation_black.png", size=fix_size, pos=[0, 0], units="deg")
-wrongFix = visual.ImageStim(win, image=root_path + stim_path + "fixations/wrongFix.png", size=fix_size, pos=[0, 0], units="deg")
+fix = visual.ImageStim(win, image=root_path + stim_path + "fixations/fixation_black.png", size=fix_size, pos=[0, 0],
+                       units="deg")
+wrongFix = visual.ImageStim(win, image=root_path + stim_path + "fixations/wrongFix.png", size=fix_size, pos=[0, 0],
+                            units="deg")
 
 # Cue word
 cue_word = visual.TextStim(win, color=(-1, -1, -1), alignText="center")
@@ -117,10 +122,14 @@ neutral1 = visual.ImageStim(win, size=obj_size, units="deg")
 neutral2 = visual.ImageStim(win, size=obj_size, units="deg")
 
 # targets
-target_bg1 = visual.Circle(win=win, units="deg", radius=circ_rad, pos=up_left_pos, fillColor=circ_fill_color, lineColor=circ_line_color)
-target_bg2 = visual.Circle(win=win, units="deg", radius=circ_rad, pos=up_right_pos, fillColor=circ_fill_color, lineColor=circ_line_color)
-target_bg3 = visual.Circle(win=win, units="deg", radius=circ_rad, pos=bot_left_pos, fillColor=circ_fill_color, lineColor=circ_line_color)
-target_bg4 = visual.Circle(win=win, units="deg", radius=circ_rad, pos=bot_right_pos, fillColor=circ_fill_color, lineColor=circ_line_color)
+target_bg1 = visual.Circle(win=win, units="deg", radius=circ_rad, pos=up_left_pos, fillColor=circ_fill_color,
+                           lineColor=circ_line_color)
+target_bg2 = visual.Circle(win=win, units="deg", radius=circ_rad, pos=up_right_pos, fillColor=circ_fill_color,
+                           lineColor=circ_line_color)
+target_bg3 = visual.Circle(win=win, units="deg", radius=circ_rad, pos=bot_left_pos, fillColor=circ_fill_color,
+                           lineColor=circ_line_color)
+target_bg4 = visual.Circle(win=win, units="deg", radius=circ_rad, pos=bot_right_pos, fillColor=circ_fill_color,
+                           lineColor=circ_line_color)
 
 target1 = visual.TextStim(win, color=(-1, -1, -1), alignText="center", height=text_size)
 target2 = visual.TextStim(win, color=(-1, -1, -1), alignText="center", height=text_size)
@@ -168,19 +177,21 @@ curTrial = len(trialMatrix)
 total = 0
 disp_acc = []
 disp_rt = []
+prac_trial_num = 0
 
 # Initiate eye-tracker link and open EDF
 if eye_track_var == 1:
     # set up when tracker came on
     trackerOnClock = core.Clock()
-    tracker = pylinkwrapper.Connect(win, rawName)
+    tracker = pylinkwrapper.Connect(win, str(parNo))
 
     # calibrate eye-tracker
-    tracker.calibrate()
+    tracker.calibrate(cnum=9)
 
 # start practice trials
 if practice_go:
     prac_block = 0
+    prac_trial_num = prac_trial_num + 1
     prac_trial = len(pracMatrix)
 
     for pracTrial in practice:
@@ -201,7 +212,7 @@ if practice_go:
 
         # --- Trial counter ---
         prac_trial = prac_trial - 1
-    
+
         # set images
         target.setImage(root_path + stim_path + 'practice/' + str(pracTrial['target']) + ".png")
         pair.setImage(root_path + stim_path + 'practice/' + str(pracTrial["pair"]) + ".png")
@@ -233,31 +244,27 @@ if practice_go:
 
         if eye_track_var == 1:
             # check that fixation is maintained before starting exp
-            tracker.fix_check(size=5, ftime=1, button='p')
+            tracker.fix_check(size=fix_check_size, ftime=fix_check_time, button='p', window=win)
+
             # Eye tracker trial set-up
-            stxt = 'Trial %d' % str(pracTrial)
+            stxt = 'Trial %d' % prac_trial_num
             tracker.set_status(stxt)
             tracker.set_trialid()
-            tracker.send_var('trial_num', prac_trial)
+            tracker.send_var('condition', 'practice')
+            tracker.send_var('trial_num', 'practice')
 
             # draw interest areas and start recording
-            tracker.draw_ia(0, 0, fix_size, 100, 0, 'fixation')
-            tracker.draw_ia(all_stim_loc[0][0], all_stim_loc[0][1], obj_size, 1, 5, 'target_obj')
-            tracker.draw_ia(all_stim_loc[1][0], all_stim_loc[1][1], obj_size, 2, 3, 'pair_obj')
-            tracker.draw_ia(all_stim_loc[2][0], all_stim_loc[2][1], obj_size, 3, 0, 'neutral1_obj')
-            tracker.draw_ia(all_stim_loc[3][0], all_stim_loc[3][1], obj_size, 4, 0, 'neutral2_obj')
+            tracker.draw_ia(0, 0, 2, 5, 15, 'fixation')
+            tracker.draw_ia(target.pos[0], target.pos[1], obj_size, 1, 5, 'target_obj')
+            tracker.draw_ia(pair.pos[0], pair.pos[1], obj_size, 2, 3, 'pair_obj')
+            tracker.draw_ia(neutral1.pos[0], neutral1.pos[1], obj_size, 3, 1, 'neutral1_obj')
+            tracker.draw_ia(neutral2.pos[0], neutral2.pos[1], obj_size, 4, 1, 'neutral2_obj')
 
             # start recording
             tracker.record_on()
-            tracker_time = trackerOnClock.getTime()
+            tracker_time = core.Clock()
 
         timer = core.Clock()
-
-        # # display fixation (might delete based on fixation code above)
-        # timer.add(ITI)
-        # while timer.getTime() < 0:
-        #     fix.draw()
-        #     win.flip()
 
         # display cue word
         timer.add(cue_time)
@@ -292,9 +299,6 @@ if practice_go:
                 keys = event.getKeys(keyList=["1", "2", "3", "4", 'q'])
                 if len(keys) > 0:
                     keyDown = keys[0]  # take the first keypress as the response
-                    if eye_track_var == 1:
-                        tracker.record_off()
-                        eyetracker_time = tracker_time.getTime()
                     rt = rtClock.getTime()
                     timer.reset()
                     if keyDown == "q":
@@ -309,13 +313,11 @@ if practice_go:
         else:
             corr = 0
             ITI = 1
-        print(corr)
+
         # ITI
         timer.add(ITI)
         while timer.getTime() < 0:
-            if corr == 100:
-                fix.draw()
-            elif corr == 0:
+            if corr == 0:
                 message = visual.TextStim(win,
                                           text="incorrect",
                                           color=(-1, -1, -1), alignText="center", wrapWidth=100)
@@ -323,18 +325,22 @@ if practice_go:
 
             win.flip()
 
+        if eye_track_var == 1:
+            tracker.set_trialresult()
+
 # --- Start Experimental Trial Loop ---
 for thisTrial in trials:
     rt = rtClock.getTime()
     remBlock = 3 - block  # display remaining blocks
-    ITI = 1     # Reset ITI to normal
+    ITI = 1  # Reset ITI to normal
 
     # --- Display Remaining Blocks ---
     if np.mod(curTrial, block_size) == 0:
         if trial == 0:
             message = visual.TextStim(
                 win,
-                text= 'Beginning Experiment \n' + str(remBlock) + " blocks remaining" + "\n\n\n\n\n\nPress space to continue",
+                text='Beginning Experiment \n' + str(
+                    remBlock) + " blocks remaining" + "\n\n\n\n\n\nPress space to continue",
                 color=(-1, -1, -1),  # black
                 alignText="center"
             )
@@ -360,8 +366,6 @@ for thisTrial in trials:
     # --- Trial counter ---
     curTrial = curTrial - 1
     trial = trial + 1
-
-    # print(thisTrial['target'])
 
     # set images
     target.setImage(root_path + stim_path + str(thisTrial['target']) + ".png")
@@ -394,32 +398,28 @@ for thisTrial in trials:
 
     if eye_track_var == 1:
         # check that fixation is maintained before starting exp
-        tracker.fix_check(size=5, ftime=1, button='p')
+        tracker.fix_check(size=fix_check_size, ftime=fix_check_time, button='p', window=win)
+
         # Eye tracker trial set-up
-        stxt = 'Trial %d' % str(thisTrial)
+        stxt = 'Trial %d' % trial
         tracker.set_status(stxt)
+        tracker.send_message('this trial is:' + str(trial))
         tracker.set_trialid()
         tracker.send_var('condition', thisTrial['condition'])
         tracker.send_var('trial_num', trial)
 
         # draw interest areas and start recording
-        tracker.draw_ia(0, 0, fix_size, 100, 0, 'fixation')
-        tracker.draw_ia(all_stim_loc[0][0], all_stim_loc[0][1], obj_size, 1, 5, 'target_obj')
-        tracker.draw_ia(all_stim_loc[1][0], all_stim_loc[1][1], obj_size, 2, 3, 'pair_obj')
-        tracker.draw_ia(all_stim_loc[2][0], all_stim_loc[2][1], obj_size, 3, 0, 'neutral1_obj')
-        tracker.draw_ia(all_stim_loc[3][0], all_stim_loc[3][1], obj_size, 4, 0, 'neutral2_obj')
+        tracker.draw_ia(0, 0, 2, 5, 15, 'fixation')
+        tracker.draw_ia(target.pos[0], target.pos[1], obj_size, 1, 5, 'target_obj')
+        tracker.draw_ia(pair.pos[0], pair.pos[1], obj_size, 2, 3, 'pair_obj')
+        tracker.draw_ia(neutral1.pos[0], neutral1.pos[1], obj_size, 3, 1, 'neutral1_obj')
+        tracker.draw_ia(neutral2.pos[0], neutral2.pos[1], obj_size, 4, 1, 'neutral2_obj')
 
         # start recording
         tracker.record_on()
-        tracker_time = trackerOnClock.getTime()
+        tracker_time = core.Clock()
 
     timer = core.Clock()
-
-    # # display fixation (might delete based on fixation code above)
-    # timer.add(ITI)
-    # while timer.getTime() < 0:
-    #     fix.draw()
-    #     win.flip()
 
     # display cue word
     timer.add(cue_time)
@@ -460,10 +460,14 @@ for thisTrial in trials:
                 rt = rtClock.getTime()
                 timer.reset()
                 if keyDown == "q":
+                    if eye_track_var == 1:
+                        if tracker:
+                            tracker.end_experiment(eye_track_data_path)
                     core.quit()
             elif len(keys) == 0:
                 keyDown = None
                 rt = 9999
+                eyetracker_time = 9999
 
     #    --- Response Check ---
     if keyDown == target1.text:
@@ -471,13 +475,11 @@ for thisTrial in trials:
     else:
         corr = 0
         ITI = 1
-    print(corr)
+
     # ITI
     timer.add(ITI)
     while timer.getTime() < 0:
-        if corr == 100:
-            fix.draw()
-        elif corr == 0:
+        if corr == 0:
             message = visual.TextStim(win,
                                       text="incorrect",
                                       color=(-1, -1, -1), alignText="center", wrapWidth=100)
@@ -491,8 +493,6 @@ for thisTrial in trials:
     trials.addData("exp_iter", exp_iter)
     trials.addData("par_ID", parNo)
     trials.addData("par_age", parAge)
-    trials.addData("par_gen", parGen)
-    trials.addData("par_hand", parHand)
     trials.addData("blockNo", block)
     trials.addData("trialNo", trial)
     trials.addData("accuracy", corr)
@@ -502,7 +502,7 @@ for thisTrial in trials:
     trials.addData("pair_obj_pos", str(object_loc[1]))
     trials.addData("pair_pos", str(object_loc[1]))
     if eye_track_var == 1:
-        trials.addData("eye_track_time", eyetracker_time * 1000) # since recording started
+        trials.addData("eye_track_time", eyetracker_time * 1000)  # since recording started
         tracker.set_trialresult()
     currExp.nextEntry()
 
