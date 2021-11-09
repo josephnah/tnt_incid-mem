@@ -23,7 +23,7 @@ parHand = 1 # 1 for Right, 2 for Left
 eye_track_var = 0 # 0 for debugging, 1 for data collection
 
 # -- Only change when necessary
-prac_repeat = 0 # 1 if skipping practice
+practice_go = True # 0 if practice included
 
 # Set date
 date = dt.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")  # get date as YMD_H_M_S
@@ -44,7 +44,7 @@ block = 3
 block_size = 30
 
 # --- Data setup ---
-dataMatrix  = {}
+dataMatrix = {}
 if parNo < 10:
     raw_data = root_path + file_path + "00" + str(parNo) + "_" + date + "_" + exp_name
     rawName = "00" + str(parNo) + "_" + date + "_" + exp_name
@@ -131,8 +131,16 @@ target4 = visual.TextStim(win, color=(-1, -1, -1), alignText="center", height=te
 event.Mouse(visible=False)
 
 # --- File for balancing factors based on orientation ---
-prac_matrix_file = root_path + "/balanceFactors-scn-obj_prac.csv"
+prac_matrix_file = root_path + "/balance_factors-tnt_eye_practice.csv"
 matrix_file = root_path + "/balance_factors-tnt_eye.csv"
+
+if practice_go:
+    pracMatrix = data.importConditions(prac_matrix_file)
+    practice = data.TrialHandler(
+        trialList=pracMatrix,
+        nReps=1,
+        method="random"
+    )
 
 trialMatrix = data.importConditions(matrix_file)
 trials = data.TrialHandler(
@@ -170,6 +178,151 @@ if eye_track_var == 1:
     # calibrate eye-tracker
     tracker.calibrate()
 
+# start practice trials
+if practice_go:
+    prac_block = 0
+    prac_trial = len(pracMatrix)
+
+    for pracTrial in practice:
+        rt = rtClock.getTime()
+        ITI = 1  # Reset ITI to normal
+
+        if prac_trial == len(pracMatrix):
+            message = visual.TextStim(
+                win,
+                text="This is the practice block: " + "\nPress space to continue",
+                color=(-1, -1, -1),  # black
+                alignHoriz="center"
+            )
+
+            message.draw()
+            win.flip()
+            event.waitKeys(keyList="spacebar")
+
+        # --- Trial counter ---
+        prac_trial = prac_trial - 1
+    
+        # set images
+        target.setImage(root_path + stim_path + 'practice/' + str(pracTrial['target']) + ".png")
+        pair.setImage(root_path + stim_path + 'practice/' + str(pracTrial["pair"]) + ".png")
+        neutral1.setImage(root_path + stim_path + 'practice/' + str(pracTrial["neutral1"]) + ".png")
+        neutral2.setImage(root_path + stim_path + 'practice/' + str(pracTrial["neutral2"]) + ".png")
+
+        # Set location of images
+        object_loc = testable.location_shuffle()
+
+        # object position set
+        target.pos = all_stim_loc[object_loc[0]]
+        pair.pos = all_stim_loc[object_loc[1]]
+        neutral1.pos = all_stim_loc[object_loc[2]]
+        neutral2.pos = all_stim_loc[object_loc[3]]
+
+        # target number position set
+        target1.pos = all_stim_loc[object_loc[0]]
+        target2.pos = all_stim_loc[object_loc[1]]
+        target3.pos = all_stim_loc[object_loc[2]]
+        target4.pos = all_stim_loc[object_loc[3]]
+
+        # randomize target text
+        target_loc_matrix = [1, 2, 3, 4]
+        random.shuffle(target_loc_matrix)
+        target1.text = target_loc_matrix[0]
+        target2.text = target_loc_matrix[1]
+        target3.text = target_loc_matrix[2]
+        target4.text = target_loc_matrix[3]
+
+        if eye_track_var == 1:
+            # check that fixation is maintained before starting exp
+            tracker.fix_check(size=5, ftime=1, button='p')
+            # Eye tracker trial set-up
+            stxt = 'Trial %d' % str(pracTrial)
+            tracker.set_status(stxt)
+            tracker.set_trialid()
+            tracker.send_var('trial_num', prac_trial)
+
+            # draw interest areas and start recording
+            tracker.draw_ia(0, 0, fix_size, 100, 0, 'fixation')
+            tracker.draw_ia(all_stim_loc[0][0], all_stim_loc[0][1], obj_size, 1, 5, 'target_obj')
+            tracker.draw_ia(all_stim_loc[1][0], all_stim_loc[1][1], obj_size, 2, 3, 'pair_obj')
+            tracker.draw_ia(all_stim_loc[2][0], all_stim_loc[2][1], obj_size, 3, 0, 'neutral1_obj')
+            tracker.draw_ia(all_stim_loc[3][0], all_stim_loc[3][1], obj_size, 4, 0, 'neutral2_obj')
+
+            # start recording
+            tracker.record_on()
+            tracker_time = trackerOnClock.getTime()
+
+        timer = core.Clock()
+
+        # # display fixation (might delete based on fixation code above)
+        # timer.add(ITI)
+        # while timer.getTime() < 0:
+        #     fix.draw()
+        #     win.flip()
+
+        # display cue word
+        timer.add(cue_time)
+        while timer.getTime() < 0:
+            cue_word.setText(str(pracTrial['Ref_Word']))
+            cue_word.draw()
+            win.flip()
+
+        # display objects + targets
+        timer.add(object_time)
+        win.callOnFlip(rtClock.reset)  # this is when RT is being collected
+        keys = []
+        event.clearEvents()
+        while timer.getTime() < 0:
+            fix.draw()
+            target.draw()
+            pair.draw()
+            neutral1.draw()
+            neutral2.draw()
+            target_bg1.draw()
+            target_bg2.draw()
+            target_bg3.draw()
+            target_bg4.draw()
+            target1.draw()
+            target2.draw()
+            target3.draw()
+            target4.draw()
+            win.flip()
+
+            # --- Get response ---
+            while timer.getTime() < 0:
+                keys = event.getKeys(keyList=["1", "2", "3", "4", 'q'])
+                if len(keys) > 0:
+                    keyDown = keys[0]  # take the first keypress as the response
+                    if eye_track_var == 1:
+                        tracker.record_off()
+                        eyetracker_time = tracker_time.getTime()
+                    rt = rtClock.getTime()
+                    timer.reset()
+                    if keyDown == "q":
+                        core.quit()
+                elif len(keys) == 0:
+                    keyDown = None
+                    rt = 9999
+
+        #    --- Response Check ---
+        if keyDown == target1.text:
+            corr = 1
+        else:
+            corr = 0
+            ITI = 1
+        print(corr)
+        # ITI
+        timer.add(ITI)
+        while timer.getTime() < 0:
+            if corr == 100:
+                fix.draw()
+            elif corr == 0:
+                message = visual.TextStim(win,
+                                          text="incorrect",
+                                          color=(-1, -1, -1), alignText="center", wrapWidth=100)
+                message.draw()
+
+            win.flip()
+
 # --- Start Experimental Trial Loop ---
 for thisTrial in trials:
     rt = rtClock.getTime()
@@ -181,7 +334,7 @@ for thisTrial in trials:
         if trial == 0:
             message = visual.TextStim(
                 win,
-                text=str(remBlock) + " blocks remaining" + "\n\n\n\n\n\nPress space to continue",
+                text= 'Beginning Experiment \n' + str(remBlock) + " blocks remaining" + "\n\n\n\n\n\nPress space to continue",
                 color=(-1, -1, -1),  # black
                 alignText="center"
             )
