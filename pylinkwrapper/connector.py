@@ -5,7 +5,7 @@ import psychocal
 import time
 import re
 from psychopy.tools.monitorunittools import deg2pix, pix2deg
-from psychopy import event
+from psychopy import event, visual
 
 
 class Connect(object):
@@ -25,6 +25,7 @@ class Connect(object):
 
         # Make filename
         fname = os.path.splitext(edfname)[0]  # strip away extension if present
+        print(fname)
         assert re.match(r'\w+$', fname), 'Name must only include A-Z, 0-9, or _'
         assert len(fname) <= 8, 'Name must be <= 8 characters.'
 
@@ -165,12 +166,11 @@ class Connect(object):
 
         # Convert units to eyelink space
         elx, ely = self.convert_coords(x, y)
-        elsz1 = deg2pix(size[0], self.win.monitor) / 2.0
-        elsz2 = deg2pix(size[1], self.win.monitor) / 2.0
+        elsz = deg2pix(size, self.win.monitor) / 2.0
 
         # Make top left / bottom right coordinates for square
-        tplf = map(round, [elx - elsz1, ely - elsz2])
-        btrh = map(round, [elx + elsz1, ely + elsz2])
+        tplf = list(map(round, [elx - elsz, ely - elsz]))
+        btrh = list(map(round, [elx + elsz, ely + elsz]))
 
         # Construct command strings
         flist = [index, name, color] + tplf + btrh
@@ -236,7 +236,7 @@ class Connect(object):
         self.tracker.receiveDataFile(self.edfname, fpath)
         self.tracker.close()
 
-    def fix_check(self, size, ftime, button):
+    def fix_check(self, size, ftime, button, window):
         """
         Checks that fixation is maintained for certain time.
 
@@ -246,7 +246,12 @@ class Connect(object):
         :type ftime: float
         :param button: Key to press to recalibrate eye-tracker.
         :type button: char
+        :param window
+        :type var: window to experiment
         """
+        root_path = os.getcwd()
+        self.win = window
+        fix_size = 2
 
         # Calculate Fix check borders
         size = deg2pix(size, self.win.monitor) / 2.0
@@ -267,6 +272,11 @@ class Connect(object):
         fixtime = time.clock()
         while self.realconnect:  # only start check loop if real connection
 
+            fix = visual.ImageStim(self.win, image=root_path + "/stim/fixations/fixation_black.png", size=fix_size,
+                                   pos=[0, 0], units="deg")
+            fix.draw()
+            self.win.flip()
+
             # Check for recalibration button
             keys = event.getKeys(button)
             if keys:
@@ -281,8 +291,8 @@ class Connect(object):
                 # Have we been in the box long enough?
                 if (time.clock() - fixtime) > ftime:
                     self.tracker.stopRecording()
-                    test = 1
-                    return test
+                    end_fixation = 1
+                    return end_fixation
                     break
             else:
                 # Reset clock if not in box
@@ -332,7 +342,7 @@ class Connect(object):
         True as well.
 
         :return: list of coordinates in the form of [x, y].t
-        
+
         """
 
         if self.realconnect:
