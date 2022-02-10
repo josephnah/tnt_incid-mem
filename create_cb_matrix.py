@@ -8,13 +8,14 @@ import pandas as pd
 from itertools import cycle
 import random
 
+
 def cb_matrix():
 
     # how many pairs of objects
     num_of_pairs = 30
 
     # Load objects
-    objects_dir = "/Users/joecool890/Dropbox/UC-Davis/projects/tnt_visual-search/stimuli/stimuli_trial_order_with_ratings_edit.csv"
+    objects_dir = "/Users/joecool890/Dropbox/UC-Davis/projects/tnt_incid-mem/stimuli/stimuli_trial_order_with_ratings_edit.csv"
     all_objects = pd.read_csv(objects_dir)
 
     # Grab thematic (high thm, low tax)
@@ -91,7 +92,7 @@ def cb_matrix_test(subjectGroup):
     mem_trial = 10
 
     # Load objects
-    objects_dir = "/Users/joecool890/Dropbox/UC-Davis/projects/tnt_visual-search/stimuli/stimuli_trial_order_with_ratings_edit.csv"
+    objects_dir = "/Users/joecool890/Dropbox/UC-Davis/projects/tnt_incid-mem/stimuli/stimuli_trial_order_with_ratings_edit.csv"
     all_objects = pd.read_csv(objects_dir)
 
     # Drop column names
