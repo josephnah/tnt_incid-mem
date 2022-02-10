@@ -252,6 +252,7 @@ if practice_go:
             tracker.set_trialid()
             tracker.send_var('condition', 'practice')
             tracker.send_var('trial_num', 'practice')
+            tracker.send_var('par_num', parNo)
 
             # draw interest areas and start recording
             tracker.draw_ia(0, 0, 2, 5, 15, 'fixation')
@@ -407,6 +408,7 @@ for thisTrial in trials:
         tracker.set_trialid()
         tracker.send_var('condition', thisTrial['condition'])
         tracker.send_var('trial_num', trial)
+        tracker.send_var('par_num', parNo)
 
         # draw interest areas and start recording
         tracker.draw_ia(0, 0, 2, 5, 15, 'fixation')
