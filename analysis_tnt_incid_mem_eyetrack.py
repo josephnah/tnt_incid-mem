@@ -4,6 +4,8 @@ import numpy as np
 import my_functions
 import pingouin as pg
 import time
+import matplotlib.pyplot as plt
+import seaborn as sns
 
 # Show or don't show
 # behav_results = input("show behavioral results (y/n)?") or 'n'
@@ -109,53 +111,196 @@ print(f'\nDone! Only accurate trials filtered in : {(round(time_elapsed, 5))} se
 
 # Get total trial count
 
-# 1. Calculate total fixation duration - Joy
+# 1. Calculate total fixation duration - Joy (done)
 # last fixation duration - Joy
 # whether they looked at the distractors and how long they looked at it
 # how many times they looked at an object (2 different looks, 0 looks)
 # useful to know what difference it makes if it's 1 look or 2, but
 # compare nearest and target just report the visual angle
 
+# Change type for numeric columns
+accurate_eye_df['CURRENT_FIX_INTEREST_AREA_DWELL_TIME'] = accurate_eye_df['CURRENT_FIX_INTEREST_AREA_DWELL_TIME'].replace(['.'], 0)
+accurate_eye_df['CURRENT_FIX_INTEREST_AREA_DWELL_TIME'] = pd.to_numeric(accurate_eye_df['CURRENT_FIX_INTEREST_AREA_DWELL_TIME'])
+
+# Calculate total accurate trials
 total_trials = accurate_eye_df.drop_duplicates(['par_ID', 'TRIAL_INDEX'])
 total_trial_count = total_trials.groupby(['par_ID'])['TRIAL_INDEX'].count().reset_index(name='total_acc_trials')
 
-# Get interesting data
+# Fixation on object (filter for separate interest areas)
 target_fix_filter = accurate_eye_df['CURRENT_FIX_INTEREST_AREA_LABEL'] == 'target_obj'
 pair_fix_filter = accurate_eye_df['CURRENT_FIX_INTEREST_AREA_LABEL'] == 'pair_obj'
+neutral_fix_filter = (accurate_eye_df['CURRENT_FIX_INTEREST_AREA_LABEL'] == 'neutral1_obj') | (accurate_eye_df['CURRENT_FIX_INTEREST_AREA_LABEL'] == 'neutral2_obj')
+
 first_fix_filter = accurate_eye_df['CURRENT_FIX_INDEX'] == 2 # 1 is fixation
 
-# apply filter
+# apply filter and grab appropriate trials
 target_fix_trials = accurate_eye_df[target_fix_filter]
-target_fix_trials.to_clipboard()
-print(A)
-# take care of fixations not in IA
-# replace_values = (target_fix_trials['CURRENT_FIX_INTEREST_AREA_LABEL'] == 'target_obj') & (target_fix_trials['CURRENT_FIX_NEAREST_INTEREST_AREA_DISTANCE'] < 2)
+pair_fix_trials = accurate_eye_df[pair_fix_filter]
+neutral_fix_trials = accurate_eye_df[neutral_fix_filter]
 
-# find trials w/ repeated fixation on target
-repeated_trials = target_fix_trials.groupby(['par_ID', 'TRIAL_INDEX']).size().reset_index(name='num_of_repeat')
+# Get target dwell time
+target_dwell_time = target_fix_trials[['par_ID', 'TRIAL_INDEX', 'condition', 'CURRENT_FIX_INTEREST_AREA_DWELL_TIME']]
+target_dwell_time.rename(columns={'CURRENT_FIX_INTEREST_AREA_DWELL_TIME': 'target_fix_dur'}, inplace=True)
+target_dwell_time = target_dwell_time.drop_duplicates()
+target_dwell_time.set_index('par_ID', inplace=True)
+target_dwell_time_RT = target_dwell_time.groupby(['par_ID', 'condition'])['target_fix_dur'].mean().unstack()
 
-# merge back to target fix trials
-target_fix_trials = pd.merge(target_fix_trials, repeated_trials, how='left', on=['par_ID', 'TRIAL_INDEX'])
+# Get Pair dwell time
+pair_dwell_time = pair_fix_trials[['par_ID', 'TRIAL_INDEX', 'condition', 'CURRENT_FIX_INTEREST_AREA_DWELL_TIME']]
+pair_dwell_time.rename(columns={'CURRENT_FIX_INTEREST_AREA_DWELL_TIME': 'pair_fix_dur'}, inplace=True)
+pair_dwell_time = pair_dwell_time.drop_duplicates()
+pair_dwell_time.set_index('par_ID', inplace=True)
+pair_dwell_time_RT = pair_dwell_time.groupby(['par_ID', 'condition'])['pair_fix_dur'].mean().unstack()
 
-# more filters
-rep_fix_filter = target_fix_trials['num_of_repeat'] != 1
+# Get Neutral Pair dwell time
+neutral_dwell_time = neutral_fix_trials[['par_ID', 'TRIAL_INDEX', 'condition', 'CURRENT_FIX_INTEREST_AREA_DWELL_TIME']]
+neutral_dwell_time.rename(columns={'CURRENT_FIX_INTEREST_AREA_DWELL_TIME': 'neu_fix_dur'}, inplace=True)
+neutral_dwell_time = neutral_dwell_time.drop_duplicates()
+neutral_dwell_time.set_index('par_ID', inplace=True)
+neutral_dwell_time_RT = neutral_dwell_time.groupby(['par_ID', 'condition'])['neu_fix_dur'].mean().unstack()
+
+# Combine all three conditions
+all_RT = pd.concat([target_dwell_time_RT, pair_dwell_time_RT, neutral_dwell_time_RT], axis=1)
+all_RT.columns = ['target_neu_RT', 'target_tax_RT', 'target_thm_RT', 'pair_neu_RT', 'pair_tax_RT', 'pair_thm_RT',
+                  'neu-pair_neu_RT', 'neu-pair_tax_RT', 'neu-pair_thm_RT']
+all_RT.to_clipboard()
 
 
-repeated_fix_trials = target_fix_trials[rep_fix_filter]
-single_fix_trials = target_fix_trials[~rep_fix_filter]
+print(f'\nShall we draw graphs now?')
 
-# eye_sem_cond = single_fixations.groupby(['par_ID', 'condition'])['CURRENT_FIX_DURATION'].mean()
-# eye_rm_anova = eye_sem_cond.reset_index()
-# print(eye_rm_anova)
-# ANOVA_RT = pg.rm_anova(data=eye_rm_anova, dv='CURRENT_FIX_DURATION', within='condition', subject='par_ID').round(4)
-#
-# pairwise_results_RT = pg.pairwise_ttests(data=eye_rm_anova, dv='CURRENT_FIX_DURATION', within='condition',
-#                                          subject='par_ID', marginal=True, padjust='bonf')
-#
-# print('RT based on semantic conditions \n', eye_sem_cond.unstack().mean(), '\n')
-# print(ANOVA_RT)
-# print(pairwise_results_RT)
 
+# Figure setup
+colors = ["#FF221A", "#6A9551", "#D2AC3A"]
+conditions_x = ['Neutral', 'Taxonomic', 'Thematic']
+conditions = 3
+sns.set_palette(sns.color_palette(colors))
+sns.set_context('talk')
+sns.set_style('white')
+fig_0, axes_0 = plt.subplots(figsize=(12, 6), nrows=1, ncols=2)
+
+# Graph Parameters
+errbar_color = 'black'
+errbar_line_width = 2
+errbar_capsize = 5
+errbar_capthick = 2
+font_color = 'black'
+trans_param = False
+
+# figure 1a
+# Figure 1a, data
+f_RT_means = RT_df.unstack().mean()
+f_sem_RT_means = RT_df.unstack().sem()
+
+# Draw graph and error bar
+axes_0[0].bar(np.arange(conditions), f_RT_means, color=colors, edgecolor='black', linewidth=2)
+axes_0[0].errorbar(np.arange(conditions), f_RT_means, yerr=f_sem_RT_means, fmt=' ', ecolor=errbar_color,
+                   elinewidth=errbar_line_width, capsize=errbar_capsize, capthick=errbar_capthick)
+
+# title stuff
+axes_0[0].set_title('RT for Visual Search', size=20, color=font_color)
+
+# x axis stuff
+axes_0[0].set_xlabel('Semantic Conditions', color=font_color)
+plt.setp(axes_0, xticks=[i for i in range(conditions)], xticklabels=conditions_x)
+
+# y-axis stuff
+axes_0[0].set_ylabel('RT (ms)', color=font_color)
+
+# Figure 1b
+# Data
+f_ACC_means = accuracy_df.unstack().mean()
+f_sem_ACC_means = accuracy_df.unstack().sem()
+
+# Draw graph and error bar
+axes_0[1].bar(np.arange(conditions), f_ACC_means, color=colors, edgecolor='black', linewidth=2)
+axes_0[1].errorbar(np.arange(conditions), f_ACC_means, yerr=f_sem_ACC_means, fmt=' ', ecolor=errbar_color,
+                   elinewidth=errbar_line_width, capsize=errbar_capsize, capthick=errbar_capthick)
+
+# title stuff
+axes_0[1].set_title('Accuracy for Visual Search', size=20, color=font_color)
+
+# x axis stuff
+axes_0[1].set_xlabel('Semantic Conditions', color=font_color)
+
+# y-axis stuff
+axes_0[1].set_ylabel('Accuracy (%)', color=font_color)
+axes_0[1].set_ylim(0, 100)
+
+sns.despine()
+plt.tight_layout(h_pad=2.0)
+plt.savefig('f_RT-ACC.png', transparent=trans_param)
+plt.show()
+
+
+# Figure 2a setup
+fig_1, axes_1 = plt.subplots(figsize=(14, 6), nrows=1, ncols=3)
+
+# data
+target_RT_means = target_dwell_time_RT.mean()
+target_sem_RT_means = target_dwell_time_RT.sem() # need to fix to within participants)
+
+# Draw graph and error bar
+axes_1[0].bar(np.arange(conditions), target_RT_means, color=colors, edgecolor='black', linewidth=2)
+axes_1[0].errorbar(np.arange(conditions), target_RT_means, yerr=target_sem_RT_means, fmt=' ', ecolor=errbar_color,
+                   elinewidth=errbar_line_width, capsize=errbar_capsize, capthick=errbar_capthick)
+
+# title stuff
+axes_1[0].set_title('Target Dwell Time', size=20, color=font_color)
+
+# x axis stuff
+# axes_1[0].set_xlabel('Semantic Conditions', color=font_color)
+plt.setp(axes_1, xticks=[i for i in range(conditions)], xticklabels=conditions_x)
+
+# y-axis stuff
+axes_1[0].set_ylabel('RT (ms)', color=font_color)
+
+# Figure 2b, data
+pair_RT_means = pair_dwell_time_RT.mean()
+pair_sem_RT_means = pair_dwell_time_RT.sem() # need to fix to within participants)
+
+# Draw graph and error bar
+axes_1[1].bar(np.arange(conditions), pair_RT_means, color=colors, edgecolor='black', linewidth=2)
+axes_1[1].errorbar(np.arange(conditions), pair_RT_means, yerr=pair_sem_RT_means, fmt=' ', ecolor=errbar_color,
+                   elinewidth=errbar_line_width, capsize=errbar_capsize, capthick=errbar_capthick)
+
+# title stuff
+axes_1[1].set_title('Sem Pair Dwell Time', size=20, color=font_color)
+
+# x axis stuff
+# axes_1[1].set_xlabel('Semantic Conditions', color=font_color)
+plt.setp(axes_1, xticks=[i for i in range(conditions)], xticklabels=conditions_x)
+
+
+# Figure 2c, data
+neutral_RT_means = neutral_dwell_time_RT.mean()
+neutral_sem_RT_means = neutral_dwell_time_RT.sem() # need to fix to within participants)
+
+# Draw graph and error bar
+axes_1[2].bar(np.arange(conditions), neutral_RT_means, color=colors, edgecolor='black', linewidth=2)
+axes_1[2].errorbar(np.arange(conditions), neutral_RT_means, yerr=neutral_sem_RT_means, fmt=' ', ecolor=errbar_color,
+                   elinewidth=errbar_line_width, capsize=errbar_capsize, capthick=errbar_capthick)
+
+# title stuff
+axes_1[2].set_title('Neutral Distractor Dwell Time', size=20, color=font_color)
+
+# x axis stuff
+# axes_1[2].set_xlabel('Semantic Conditions', color=font_color)
+plt.setp(axes_1, xticks=[i for i in range(conditions)], xticklabels=conditions_x)
+
+
+# Add # of participants to graph
+axes_1[2].text(2, -100, 'n = ' + str(total_par), color=font_color)
+
+# limit y axis
+axes_1[0].set_ylim(0, 650)
+axes_1[1].set_ylim(0, 650)
+axes_1[2].set_ylim(0, 650)
+
+# Finalize and print
+sns.despine()
+plt.tight_layout(h_pad=2.0)
+plt.savefig('f_fix_RT.png', transparent=trans_param)
+plt.show()
 
 ## NOTES from Malcolm 2009 and 2010
 
