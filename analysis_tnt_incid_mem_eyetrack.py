@@ -69,7 +69,7 @@ pairwise_results_ACC = pg.pairwise_ttests(data=accuracy_df_anova, dv='accuracy',
 # Print data and results
 if show_behav == 1:
     print('# of dropped trials \n', dropped_trials, '\n')
-    print('RT based on semantic conditions \n', RT_df.unstack(), '\n')
+    print('RT based on semantic conditions \n', RT_df.unstack().mean(), '\n')
     print('ANOVA for RT \n', ANOVA_RT, '\n\n')
     print("Pairwise testings for RT \n", pairwise_results_RT, '\n')
     print('Accuracy based on semantic conditions \n', round(accuracy_df.unstack(), 2), '\n')
@@ -109,12 +109,11 @@ for row in accurate_trial_numbers.itertuples():
 time_elapsed = time.time() - x
 print(f'\nDone! Only accurate trials filtered in : {(round(time_elapsed, 5))} seconds')
 
-# Get total trial count
-
 # 1. Calculate total fixation duration - Joy (done)
-# last fixation duration - Joy
+# last fixation duration - Joy (done)
 # whether they looked at the distractors and how long they looked at it (done)
 # how many times they looked at an object (2 different looks, 0 looks) (done)
+# Accurate as of 2022-03-29
 # useful to know what difference it makes if it's 1 look or 2, but
 # compare nearest and target just report the visual angle
 
@@ -136,15 +135,15 @@ neutral_fix_filter = (accurate_eye_df['CURRENT_FIX_INTEREST_AREA_LABEL'] == 'neu
 first_fix_filter = accurate_eye_df['CURRENT_FIX_INDEX'] == 2 # 1 is fixation
 
 # apply filter and grab appropriate trials
-target_fix_trials = accurate_eye_df[target_fix_filter]
-pair_fix_trials = accurate_eye_df[pair_fix_filter]
-neutral_fix_trials = accurate_eye_df[neutral_fix_filter]
+target_fix_trials_raw = accurate_eye_df[target_fix_filter]
+pair_fix_trials_raw = accurate_eye_df[pair_fix_filter]
+neutral_fix_trials_raw = accurate_eye_df[neutral_fix_filter]
 
 # Get target fixation trials
-target_fix_trials = target_fix_trials[['par_ID', 'TRIAL_INDEX', 'condition', 'CURRENT_FIX_INTEREST_AREA_DWELL_TIME', 'total_fixation_count']]
+target_fix_trials = target_fix_trials_raw[['par_ID', 'TRIAL_INDEX', 'condition', 'CURRENT_FIX_INTEREST_AREA_DWELL_TIME', 'total_fixation_count']]
 target_fix_trials.rename(columns={'CURRENT_FIX_INTEREST_AREA_DWELL_TIME': 'target_fix_dur'}, inplace=True)
 
-# Figure out fixation count on target
+# Figure out fixation count on target (Replace with dedicated column)
 target_fixation_count = target_fix_trials.groupby(['par_ID','TRIAL_INDEX'])['total_fixation_count'].count().reset_index(name='total_fixation_count')
 target_fix_trials = target_fix_trials.drop_duplicates()
 target_fix_trials = target_fix_trials.drop(columns=['total_fixation_count'])
@@ -155,7 +154,7 @@ target_fix_RT = target_fix_trials.groupby(['par_ID', 'condition'])['target_fix_d
 target_fix_count = target_fix_trials.groupby(['par_ID', 'condition'])['total_fixation_count'].mean().unstack()
 
 # Get semantic pair fixation trials
-pair_fix_trials = pair_fix_trials[['par_ID', 'TRIAL_INDEX', 'condition', 'CURRENT_FIX_INTEREST_AREA_DWELL_TIME', 'total_fixation_count']]
+pair_fix_trials = pair_fix_trials_raw[['par_ID', 'TRIAL_INDEX', 'condition', 'CURRENT_FIX_INTEREST_AREA_DWELL_TIME', 'total_fixation_count']]
 pair_fix_trials.rename(columns={'CURRENT_FIX_INTEREST_AREA_DWELL_TIME': 'pair_fix_dur'}, inplace=True)
 
 # Figure out fixation count on semantic pair
@@ -170,7 +169,7 @@ pair_fix_trials_RT = pair_fix_trials.groupby(['par_ID', 'condition'])['pair_fix_
 pair_fix_count = pair_fix_trials.groupby(['par_ID', 'condition'])['total_fixation_count'].mean().unstack()
 
 # Get Neutral Pair dwell time
-neutral_fix_trials = neutral_fix_trials[['par_ID', 'TRIAL_INDEX', 'condition', 'CURRENT_FIX_INTEREST_AREA_DWELL_TIME', 'total_fixation_count']]
+neutral_fix_trials = neutral_fix_trials_raw[['par_ID', 'TRIAL_INDEX', 'condition', 'CURRENT_FIX_INTEREST_AREA_DWELL_TIME', 'total_fixation_count']]
 neutral_fix_trials.rename(columns={'CURRENT_FIX_INTEREST_AREA_DWELL_TIME': 'neu_fix_dur'}, inplace=True)
 
 # Get neutral distractor fixation trials
@@ -189,7 +188,7 @@ all_RT.columns = ['target_neu_RT', 'target_tax_RT', 'target_thm_RT', 'pair_neu_R
                   'neu-pair_neu_RT', 'neu-pair_tax_RT', 'neu-pair_thm_RT']
 all_RT.to_clipboard()
 
-# ANOVA for RT and acc (behavioral)
+# ANOVA for RT and acc
 target_dwell_anova = target_fix_trials.groupby(['par_ID', 'condition'])['target_fix_dur'].mean().reset_index()
 target_dwell_ANOVA_RT = pg.rm_anova(data=target_dwell_anova, dv='target_fix_dur', within='condition', subject='par_ID').round(2)
 
@@ -205,6 +204,17 @@ pair_pairwise_results_RT = pg.pairwise_ttests(data=pair_dwell_anova, dv='pair_fi
 neutral_dwell_anova = neutral_fix_trials.groupby(['par_ID', 'condition'])['neu_fix_dur'].mean().reset_index()
 neutral_dwell_ANOVA_RT = pg.rm_anova(data=neutral_dwell_anova, dv='neu_fix_dur', within='condition', subject='par_ID').round(2)
 
+# ANOVA for fixation count
+target_fix_count_anova = target_fix_trials.groupby(['par_ID', 'condition'])['total_fixation_count'].mean().reset_index()
+target_fix_count_ANOVA = pg.rm_anova(data=target_fix_count_anova, dv='total_fixation_count', within='condition', subject='par_ID').round(2)
+
+pair_fix_count_anova = pair_fix_trials.groupby(['par_ID', 'condition'])['total_fixation_count'].mean().reset_index()
+pair_fix_count_ANOVA = pg.rm_anova(data=pair_fix_count_anova, dv='total_fixation_count', within='condition', subject='par_ID').round(2)
+
+neutral_fix_count_anova = neutral_fix_trials.groupby(['par_ID', 'condition'])['total_fixation_count'].mean().reset_index()
+neutral_fix_count_ANOVA = pg.rm_anova(data=neutral_fix_count_anova, dv='total_fixation_count', within='condition', subject='par_ID').round(2)
+neutral_fix_pairwise_results = pg.pairwise_ttests(data=neutral_fix_count_anova, dv='total_fixation_count', within='condition',
+                                         subject='par_ID', marginal=True, padjust='bonf')
 # Print data and results
 print('Dwell time on targets \n', target_fix_RT.mean(), '\n')
 print('ANOVA for target dwell time \n', target_dwell_ANOVA_RT, '\n\n')
@@ -217,9 +227,41 @@ print("Pairwise testings for RT \n", pair_pairwise_results_RT, '\n')
 print('Dwell time on neutral distractor \n', neutral_fix_trials_RT.mean(), '\n')
 print('ANOVA for neutral distractor dwell time \n', neutral_dwell_ANOVA_RT, '\n\n')
 
+
+# Print data and results
+print('ANOVA for target fixation count \n', target_fix_count_ANOVA, '\n\n')
+print('ANOVA for semantic pair fixation count \n', pair_fix_count_ANOVA, '\n\n')
+print('ANOVA for neutral distractor fixation count \n', neutral_fix_count_ANOVA, '\n\n')
+
+
+# Calculate
+# Final
+# Fixation
+# Duration
+
+target_final_fix_trials = target_fix_trials_raw[['par_ID', 'TRIAL_INDEX', 'condition', 'CURRENT_FIX_INDEX', 'CURRENT_FIX_DURATION', 'TRIAL_FIXATION_TOTAL']]
+target_final_fix_trials = target_final_fix_trials.drop_duplicates(['par_ID', 'TRIAL_INDEX'], keep='last')
+target_final_fix_trials = target_final_fix_trials[(target_final_fix_trials['CURRENT_FIX_INDEX'] - target_final_fix_trials['TRIAL_FIXATION_TOTAL'] == 0) | (target_final_fix_trials['CURRENT_FIX_INDEX'] - target_final_fix_trials['TRIAL_FIXATION_TOTAL'] == -1)]
+# target_final_fix_trials = target_final_fix_trials[(target_final_fix_trials['CURRENT_FIX_INDEX'] - target_final_fix_trials['TRIAL_FIXATION_TOTAL'] == 0)]
+target_final_fix_trials.set_index('par_ID', inplace=True)
+
+target_final_fix_RT = target_final_fix_trials.groupby(['par_ID', 'condition'])['CURRENT_FIX_DURATION'].mean().unstack()
+
+target_final_fix_anova = target_final_fix_trials.groupby(['par_ID', 'condition'])['CURRENT_FIX_DURATION'].mean().reset_index()
+
+target_final_fix_ANOVA_RT = pg.rm_anova(data=target_final_fix_anova, dv='CURRENT_FIX_DURATION', within='condition', subject='par_ID').round(2)
+target_final_fix_pairwise_results_RT = pg.pairwise_ttests(data=target_final_fix_anova, dv='CURRENT_FIX_DURATION', within='condition',
+                                         subject='par_ID', marginal=True, padjust='bonf')
+
+# target_final_fix_RT.to_clipboard()
+
+print('Final Fixation duration (ms) \n', target_final_fix_RT.mean(), '\n')
+print('ANOVA for Final Fixation duration \n', target_final_fix_ANOVA_RT, '\n\n')
+print("Pairwise testings for RT \n", target_final_fix_pairwise_results_RT, '\n')
+
 print(f'\nShall we draw graphs now?')
 
-
+target_final_fix_ANOVA_RT.to_clipboard()
 # Figure setup
 colors = ["#FF221A", "#6A9551", "#D2AC3A"]
 conditions_x = ['Neutral', 'Taxonomic', 'Thematic']
@@ -236,7 +278,12 @@ errbar_capsize = 5
 errbar_capthick = 2
 font_color = 'black'
 trans_param = False
-
+props = {'connectionstyle': 'bar', 'arrowstyle': '-', 'shrinkA': 20, 'shrinkB': 20, 'linewidth': 2,
+             "color": font_color}
+props2 = {'connectionstyle': 'bar', 'arrowstyle': '-', 'shrinkA': 25, 'shrinkB': 25, 'linewidth': 2,
+             "color": font_color}
+props3 = {'connectionstyle': 'bar', 'arrowstyle': '-', 'shrinkA': 40, 'shrinkB': 40, 'linewidth': 2,
+             "color": font_color}
 # figure 1a
 # Figure 1a, data
 f_RT_means = RT_df.unstack().mean()
@@ -257,6 +304,14 @@ plt.setp(axes_0, xticks=[i for i in range(conditions)], xticklabels=conditions_x
 # y-axis stuff
 axes_0[0].set_ylabel('RT (ms)', color=font_color)
 
+# Draw significance bars
+axes_0[0].text(0.5, 1380, '*', size=20, color=font_color)
+axes_0[0].annotate('', xy=(0, 1250), xytext=(1, 1250), arrowprops=props2)
+axes_0[0].text(1.5, 1380, '*', size=20, color=font_color)
+axes_0[0].annotate('', xy=(1, 1200), xytext=(2, 1200), arrowprops=props2)
+
+axes_0[0].set_ylim(0, 1500)
+
 # Figure 1b
 # Data
 f_ACC_means = accuracy_df.unstack().mean()
@@ -275,8 +330,12 @@ axes_0[1].set_xlabel('Semantic Conditions', color=font_color)
 
 # y-axis stuff
 axes_0[1].set_ylabel('Accuracy (%)', color=font_color)
-axes_0[1].set_ylim(0, 100)
+axes_0[1].set_ylim(0, 110)
 
+# Draw significance bars
+axes_0[1].annotate('', xy=(0, 85), xytext=(1, 85), arrowprops=props)
+axes_0[1].text(1.25, 100, '*', size=20, color=font_color)
+axes_0[1].annotate('', xy=(.5, 85), xytext=(2, 85), arrowprops=props3)
 sns.despine()
 plt.tight_layout(h_pad=2.0)
 plt.savefig('f_RT-ACC.png', transparent=trans_param)
@@ -296,14 +355,19 @@ axes_1[0].errorbar(np.arange(conditions), target_RT_means, yerr=target_sem_RT_me
                    elinewidth=errbar_line_width, capsize=errbar_capsize, capthick=errbar_capthick)
 
 # title stuff
-axes_1[0].set_title('Target Dwell Time', size=20, color=font_color)
+axes_1[0].set_title('Target Fix. Time', size=20, color=font_color)
 
 # x axis stuff
 # axes_1[0].set_xlabel('Semantic Conditions', color=font_color)
 plt.setp(axes_1, xticks=[i for i in range(conditions)], xticklabels=conditions_x)
 
 # y-axis stuff
-axes_1[0].set_ylabel('RT (ms)', color=font_color)
+axes_1[0].set_ylabel('Fixation Duration (ms)', color=font_color)
+
+# Draw significance bars
+axes_1[0].text(0.75, 670, '*', size=20, color=font_color)
+axes_1[0].annotate('', xy=(0, 590), xytext=(1.5, 590), arrowprops=props2)
+axes_1[0].annotate('', xy=(1, 580), xytext=(2, 580), arrowprops=props)
 
 # Figure 2b, data
 pair_RT_means = pair_fix_trials_RT.mean()
@@ -315,12 +379,17 @@ axes_1[1].errorbar(np.arange(conditions), pair_RT_means, yerr=pair_sem_RT_means,
                    elinewidth=errbar_line_width, capsize=errbar_capsize, capthick=errbar_capthick)
 
 # title stuff
-axes_1[1].set_title('Sem Pair Dwell Time', size=20, color=font_color)
+axes_1[1].set_title('Sem Pair Fix. Time', size=20, color=font_color)
 
 # x axis stuff
 # axes_1[1].set_xlabel('Semantic Conditions', color=font_color)
 plt.setp(axes_1, xticks=[i for i in range(conditions)], xticklabels=conditions_x)
 
+# Draw significance bars
+axes_1[1].text(0.5, 350, '*', size=20, color=font_color)
+axes_1[1].annotate('', xy=(0, 250), xytext=(.95, 250), arrowprops=props)
+axes_1[1].text(1.5, 350, '*', size=20, color=font_color)
+axes_1[1].annotate('', xy=(1.05, 250), xytext=(2, 250), arrowprops=props)
 
 # Figure 2c, data
 neutral_RT_means = neutral_fix_trials_RT.mean()
@@ -332,7 +401,7 @@ axes_1[2].errorbar(np.arange(conditions), neutral_RT_means, yerr=neutral_sem_RT_
                    elinewidth=errbar_line_width, capsize=errbar_capsize, capthick=errbar_capthick)
 
 # title stuff
-axes_1[2].set_title('Neutral Distractor Dwell Time', size=20, color=font_color)
+axes_1[2].set_title('Neutral Distractor Fix. Time', size=20, color=font_color)
 
 # x axis stuff
 # axes_1[2].set_xlabel('Semantic Conditions', color=font_color)
@@ -343,9 +412,9 @@ plt.setp(axes_1, xticks=[i for i in range(conditions)], xticklabels=conditions_x
 axes_1[2].text(2, -100, 'n = ' + str(total_par), color=font_color)
 
 # limit y axis
-axes_1[0].set_ylim(0, 650)
-axes_1[1].set_ylim(0, 650)
-axes_1[2].set_ylim(0, 650)
+axes_1[0].set_ylim(0, 700)
+axes_1[1].set_ylim(0, 700)
+axes_1[2].set_ylim(0, 700)
 
 # Finalize and print
 sns.despine()
@@ -423,67 +492,31 @@ plt.savefig('f_fix_count.png', transparent=trans_param)
 plt.show()
 
 # Figure 4 setup
-fig_3, axes_3 = plt.subplots(figsize=(14, 6), nrows=1, ncols=3)
+fig_3, axes_3 = plt.subplots(figsize=(6, 6), nrows=1, ncols=1)
 
 # data
-target_fix_means = target_fix_count.mean()
-target_sem_fix_means = target_fix_count.sem() # need to fix to within participants)
+target_final_fix_means = target_final_fix_RT.mean()
+target_sem_final_fix_means = target_final_fix_RT.sem() # need to fix to within participants)
 
 # Draw graph and error bar
-axes_2[0].bar(np.arange(conditions), target_fix_means, color=colors, edgecolor='black', linewidth=2)
-axes_2[0].errorbar(np.arange(conditions), target_fix_means, yerr=target_sem_fix_means, fmt=' ', ecolor=errbar_color,
+axes_3.bar(np.arange(conditions), target_final_fix_means, color=colors, edgecolor='black', linewidth=2)
+axes_3.errorbar(np.arange(conditions), target_final_fix_means, yerr=target_sem_final_fix_means, fmt=' ', ecolor=errbar_color,
                    elinewidth=errbar_line_width, capsize=errbar_capsize, capthick=errbar_capthick)
 
 # title stuff
-axes_2[0].set_title('Target Fix. Count', size=20, color=font_color)
+axes_3.set_title('Final Fixation Duration', size=20, color=font_color)
 
 # x axis stuff
-plt.setp(axes_2, xticks=[i for i in range(conditions)], xticklabels=conditions_x)
+plt.setp(axes_3, xticks=[i for i in range(conditions)], xticklabels=conditions_x)
 
 # y-axis stuff
-axes_2[0].set_ylabel('Fixation Count', color=font_color)
-
-# Figure 2b, data
-pair_fix_means = pair_fix_count.mean()
-pair_sem_fix_means = pair_fix_count.sem() # need to fix to within participants)
-
-# Draw graph and error bar
-axes_2[1].bar(np.arange(conditions), pair_fix_means, color=colors, edgecolor='black', linewidth=2)
-axes_2[1].errorbar(np.arange(conditions), pair_fix_means, yerr=pair_sem_fix_means, fmt=' ', ecolor=errbar_color,
-                   elinewidth=errbar_line_width, capsize=errbar_capsize, capthick=errbar_capthick)
-
-# title stuff
-axes_2[1].set_title('Sem Pair Fix. Count', size=20, color=font_color)
-
-# x axis stuff
-# axes_1[1].set_xlabel('Semantic Conditions', color=font_color)
-plt.setp(axes_2, xticks=[i for i in range(conditions)], xticklabels=conditions_x)
-
-
-# Figure 2c, data
-neutral_fix_means = neutral_fix_count.mean()
-neutral_sem_fix_means = neutral_fix_count.sem() # need to fix to within participants)
-
-# Draw graph and error bar
-axes_2[2].bar(np.arange(conditions), neutral_fix_means, color=colors, edgecolor='black', linewidth=2)
-axes_2[2].errorbar(np.arange(conditions), neutral_fix_means, yerr=neutral_sem_fix_means, fmt=' ', ecolor=errbar_color,
-                   elinewidth=errbar_line_width, capsize=errbar_capsize, capthick=errbar_capthick)
-
-# title stuff
-axes_2[2].set_title('Neu. Distractor Fix. Count', size=20, color=font_color)
-
-# x axis stuff
-# axes_1[2].set_xlabel('Semantic Conditions', color=font_color)
-plt.setp(axes_2, xticks=[i for i in range(conditions)], xticklabels=conditions_x)
-
+axes_3.set_ylabel('Fixation Duration (ms)', color=font_color)
 
 # Add # of participants to graph
-axes_2[2].text(2, -.3, 'n = ' + str(total_par), color=font_color)
+axes_3.text(2, -100, 'n = ' + str(total_par), color=font_color)
 
 # limit y axis
-axes_2[0].set_ylim(0, 2)
-axes_2[1].set_ylim(0, 2)
-axes_2[2].set_ylim(0, 2)
+axes_3.set_ylim(0, 650)
 
 # Finalize and print
 sns.despine()
